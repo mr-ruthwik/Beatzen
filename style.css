@@ -9690,6 +9690,12 @@ body.dark-mode .bz-key-badge {
   transform: scale(0.96);
 }
 
+/* Admin Dashboard's "Back to list" button keeps its hover colour change
+   but never scales up on hover. */
+#bz-admin-back-to-list-btn:hover {
+  transform: none;
+}
+
 .stg-btn--danger {
   background: rgba(231, 76, 60, 0.12);
   color: var(--accent-red);
@@ -10085,6 +10091,20 @@ body.dark-mode .bz-premium-upi-copy-btn {
   border-radius: 4px;
 }
 
+/* Wraps the QR image, the "pay through any UPI app" hint and the Share
+   Image button so all three show/hide together as one toggled block. */
+.bz-premium-qr-block {
+  width: 100%;
+}
+
+.bz-premium-qr-hint {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 /* All action buttons inside the Premium payment flow keep their existing
    colour-changing hover, but never scale up (Copy / Show-Hide QR / Upload /
    Submit) — a flat hover reads calmer and more "professional gateway",
@@ -10148,6 +10168,15 @@ body.dark-mode .bz-premium-upi-copy-btn {
   margin: 0;
   font-size: 0.9rem;
   color: var(--text-muted);
+}
+
+.bz-premium-countdown {
+  margin: -4px 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  color: var(--primary-color);
+  letter-spacing: 0.3px;
 }
 
 .bz-premium-spinner {
