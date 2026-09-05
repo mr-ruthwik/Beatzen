@@ -1127,11 +1127,23 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
            moment some app spells a month differently — e.g. Google Pay's
            "Sept" — or a bank app uses its own layout), it pulls anything
            that *looks* like a date out of the text — numeric (5/9/2026,
-           05-09-2026, 2026.09.05, 05092026...) or with a month name
-           (5 Sept 2026, Sept 5 2026, 5th September, 2026...) — parses it
-           into actual day/month/year numbers, and compares those to
-           today's real date. That works for any bank/UPI app without
-           needing to know its exact format ahead of time.
+           05-09-2026, 2026.09.05, 05092026...), with a month name
+           (5 Sept 2026, Sept 5 2026, 5th September, 2026...), a month+day
+           with NO year at all (common for same-day transactions), or a
+           relative word ("Today", "Just now") — parses/matches it against
+           today's real date, and never lets a written-but-wrong year slip
+           through the no-year fallback. That works for any bank/UPI app
+           without needing to know its exact format ahead of time.
+           The UPI/bank-name check recognizes both third-party UPI apps
+           (Google Pay, PhonePe, Paytm, ...) and the major Indian banks'
+           own apps/net-banking, plus generic banking terms (IFSC, A/C no).
+           The amount check tries two independent signals: a text match
+           (currency-prefixed or decimal-formatted) and, if that misses,
+           the tallest numeric text recognized anywhere on the screenshot —
+           payment-confirmation screens near-universally render the amount
+           as the single largest text, which catches the very common case
+           of OCR failing to read the ₹ symbol and the app showing a
+           decimal-free whole-rupee amount.
            This is a best-effort client-side check, not a payment-gateway
            verification — OCR can misread compressed/blurry screenshots, so
            treat it as a first filter that catches wrong/fake/unrelated
@@ -1179,6 +1191,14 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
                     isTodayDMY(c, a, b) || isTodayDMY(c, b, a);
             }
 
+            // Many UPI apps (Google Pay in particular) label a same-day
+            // transaction with a relative word instead of a written date —
+            // "Today", "Just now" — rather than any digits at all. Treat
+            // those as an immediate pass before trying to parse a date out
+            // of the text.
+            const lower = (text || '').toLowerCase();
+            if (/\btoday\b/.test(lower) || /\bjust now\b/.test(lower)) return true;
+
             // Strip time-of-day (e.g. "10:36 am") first so it's never
             // mistaken for part of a date.
             const clean = (text || '').replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ');
@@ -1219,38 +1239,154 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
                 if (isTodayDMY(parseInt(m[2], 10), _BZ_MONTH_ALIASES[m[1].toLowerCase()], parseInt(m[3], 10))) return true;
             }
 
+            // ── Month name, NO year: "5 Sept" / "Sept 5" ──
+            // Some apps (Google Pay in particular) drop the year entirely
+            // for a recent transaction. The negative lookahead/lookbehind-
+            // free guards below make sure this only fires when there is no
+            // year-like number actually present — if a year IS written
+            // (even a wrong one), the stricter regexes above already
+            // handled it, and this loose fallback must not paper over a
+            // genuinely wrong year by matching just the day+month part of it.
+            const dmNoYearRe = new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s,]+' + _BZ_MONTH_WORD_RE + '\\b(?![\\s,]*\\d)', 'gi');
+            while ((m = dmNoYearRe.exec(clean))) {
+                if (parseInt(m[1], 10) === todayDay && _BZ_MONTH_ALIASES[m[2].toLowerCase()] === todayMonth) return true;
+            }
+            const mdNoYearRe = new RegExp('(?:^|[^\\d])' + _BZ_MONTH_WORD_RE + '[\\s,]+(\\d{1,2})(?:st|nd|rd|th)?\\b(?![\\s,]*\\d)', 'gi');
+            while ((m = mdNoYearRe.exec(clean))) {
+                if (parseInt(m[2], 10) === todayDay && _BZ_MONTH_ALIASES[m[1].toLowerCase()] === todayMonth) return true;
+            }
+
             return false;
         }
 
         function _bzTextHasUpiSignal(text) {
             const norm = (text || '').toLowerCase();
             const keywords = [
+                // UPI apps
                 'upi', 'unified payments', 'google pay', 'gpay', 'g pay', 'phonepe', 'phone pe',
                 'paytm', 'bhim', 'amazon pay', 'whatsapp pay', 'cred', 'navi', 'mobikwik',
-                'freecharge', '@ybl', '@okaxis', '@okhdfcbank', '@okicici', '@oksbi', '@okbizaxis',
+                'freecharge',
+                // Handles / reference terms
+                '@ybl', '@okaxis', '@okhdfcbank', '@okicici', '@oksbi', '@okbizaxis',
                 '@paytm', '@apl', 'utr', 'upi ref', 'upi id', 'vpa', 'transaction id',
-                'beatzenapp', '@naviaxis'
+                'beatzenapp', '@naviaxis',
+                // Major Indian banks — covers screenshots from a bank's own
+                // app/net-banking rather than a third-party UPI app.
+                'state bank of india', 'sbi', 'hdfc bank', 'hdfc', 'icici bank', 'icici',
+                'axis bank', 'kotak mahindra', 'kotak', 'punjab national bank', 'pnb',
+                'bank of baroda', 'canara bank', 'union bank of india', 'union bank',
+                'indusind bank', 'indusind', 'yes bank', 'idfc first bank', 'idfc',
+                'federal bank', 'rbl bank', 'bandhan bank', 'central bank of india',
+                'indian bank', 'indian overseas bank', 'uco bank', 'idbi bank', 'idbi',
+                'bank of india', 'bank of maharashtra', 'south indian bank', 'karnataka bank',
+                'city union bank', 'dcb bank', 'au small finance bank', 'equitas', 'ujjivan',
+                'karur vysya bank', 'jammu and kashmir bank',
+                // Generic banking terms that show up on most receipts
+                'ifsc', 'a/c no', 'account number', 'net banking', 'bank a/c'
             ];
             return keywords.some(function (k) { return norm.indexOf(k) !== -1; });
         }
 
-        // Checks whether the paid amount shown in the screenshot matches
-        // the amount for the plan the user selected. Accepts either a
-        // currency-prefixed match ("₹20", "Rs 20", "INR 20") or the
-        // ".00"/".0" decimal formatting payment apps commonly use for
-        // amounts ("20.00") — both anchored so the amount can't just be
-        // a substring of a longer number (a UTR, a date, etc). This is a
-        // best-effort text match like the date/UPI checks above, not an
-        // exact parse of every possible receipt layout.
+        // Strips date- and time-of-day-looking substrings out of OCR text.
+        // Used before the bare-number amount fallback below so a plan
+        // amount like "20" can't accidentally match a day-of-month, a
+        // compact date, or a clock time that happens to share the same
+        // digits (e.g. "8:20 pm" or "20/09/2026"). Reuses the same patterns
+        // as _bzTextHasTodayDate so the two stay in sync.
+        function _bzStripDatesAndTimes(text) {
+            let out = (text || '')
+                .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ')
+                .replace(/\b\d{1,4}[\/\-.]\d{1,4}[\/\-.]\d{1,4}\b/g, ' ')
+                .replace(/\b(?:\d{6}|\d{8})\b/g, ' ');
+            const dmyRe = new RegExp('\\b\\d{1,2}(?:st|nd|rd|th)?[\\s,]+' + _BZ_MONTH_WORD_RE + '[\\s,]+\\d{2,4}\\b', 'gi');
+            const mdyRe = new RegExp('\\b' + _BZ_MONTH_WORD_RE + '[\\s,]+\\d{1,2}(?:st|nd|rd|th)?[\\s,]+\\d{2,4}\\b', 'gi');
+            const dmRe = new RegExp('\\b\\d{1,2}(?:st|nd|rd|th)?[\\s,]+' + _BZ_MONTH_WORD_RE + '\\b', 'gi');
+            const mdRe = new RegExp('\\b' + _BZ_MONTH_WORD_RE + '[\\s,]+\\d{1,2}(?:st|nd|rd|th)?\\b', 'gi');
+            return out.replace(dmyRe, ' ').replace(mdyRe, ' ').replace(dmRe, ' ').replace(mdRe, ' ');
+        }
+
+        // Checks whether the paid amount shown in the screenshot's plain
+        // text matches the amount for the selected plan. Tries three
+        // signals, from strictest to loosest:
+        //   1. Currency-prefixed: "₹20", "Rs 20", "INR 20"
+        //   2. Decimal-formatted: "20.00" (no currency word needed)
+        //   3. A bare, standalone number — only after dates/times are
+        //      stripped out, so it can't fire on a day-of-month or a clock
+        //      time that happens to share the plan's digits.
+        // (1) and (2) are written without lookbehind assertions, since
+        // older WebViews (pre-2023 iOS Safari, older embedded WebViews)
+        // don't support `(?<!...)` and would throw instead of just not
+        // matching. This is a best-effort text match, not an exact parse
+        // of every possible receipt layout — see _bzOcrLargestAmountMatches
+        // below for a second, independent signal based on font size.
         function _bzTextHasAmount(text, amount) {
             if (amount === undefined || amount === null || amount === '') return true;
-            const norm = (text || '').replace(/,/g, '');
+            const raw = (text || '').replace(/,/g, '');
             const amtStr = String(Math.round(Number(amount)));
             if (!amtStr || amtStr === 'NaN') return true;
             const esc = amtStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const currencyRe = new RegExp('(?<![a-z])(?:₹|rs\\.?|inr|rupees)\\s*' + esc + '(?:\\.0{1,2})?(?!\\d)', 'i');
-            const decimalRe = new RegExp('(?<!\\d)' + esc + '\\.0{1,2}(?!\\d)');
-            return currencyRe.test(norm) || decimalRe.test(norm);
+
+            const currencyRe = new RegExp('(^|[^a-z])(?:₹|rs\\.?|inr|rupees)\\s*' + esc + '(?:\\.0{1,2})?(?!\\d)', 'i');
+            if (currencyRe.test(raw)) return true;
+
+            const decimalRe = new RegExp('(^|[^0-9])' + esc + '\\.0{1,2}(?!\\d)');
+            if (decimalRe.test(raw)) return true;
+
+            const bareRe = new RegExp('\\b' + esc + '\\b');
+            return bareRe.test(_bzStripDatesAndTimes(raw));
+        }
+
+        // Pulls every recognized word + its bounding-box height out of a
+        // Tesseract.js result, regardless of whether it came back as a flat
+        // `words` array or nested `blocks → paragraphs → lines → words`
+        // (the shape Tesseract.js v5 uses by default). Returns [] rather
+        // than throwing if neither shape is present, so callers degrade
+        // gracefully to the plain-text checks above.
+        function _bzFlattenOcrWords(data) {
+            const out = [];
+            function push(w) {
+                if (w && w.text && w.bbox && typeof w.bbox.y0 === 'number' && typeof w.bbox.y1 === 'number') {
+                    out.push({ text: w.text, height: w.bbox.y1 - w.bbox.y0 });
+                }
+            }
+            if (data && Array.isArray(data.words)) data.words.forEach(push);
+            if (data && Array.isArray(data.blocks)) {
+                data.blocks.forEach(function (block) {
+                    (block.paragraphs || []).forEach(function (para) {
+                        (para.lines || []).forEach(function (line) {
+                            (line.words || []).forEach(push);
+                        });
+                    });
+                });
+            }
+            return out;
+        }
+
+        // Second, independent amount signal: UPI/bank payment-confirmation
+        // screens almost universally render the paid amount as the single
+        // largest text on the screen — bigger than "Paid to X", the bank
+        // name, or the date below it. OCR very often garbles or drops the
+        // ₹ symbol entirely and plenty of apps show whole-rupee amounts
+        // with no decimal point at all, which defeats plain text matching
+        // no matter the amount. This sidesteps that: strip every recognized
+        // word down to its digits and check whether the *tallest* numeric
+        // word on the page equals the expected amount.
+        function _bzOcrLargestAmountMatches(data, amount) {
+            if (amount === undefined || amount === null || amount === '') return true;
+            const target = Math.round(Number(amount));
+            if (!isFinite(target)) return true;
+
+            const words = _bzFlattenOcrWords(data);
+            let tallest = null;
+            words.forEach(function (w) {
+                const digits = w.text.replace(/[^0-9.]/g, '');
+                if (!digits) return;
+                const val = Math.round(parseFloat(digits));
+                if (!isFinite(val)) return;
+                if (!tallest || w.height > tallest.height) tallest = { value: val, height: w.height };
+            });
+
+            return !!tallest && tallest.value === target;
         }
 
         function _bzWithTimeout(promise, ms) {
@@ -1273,11 +1409,13 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             }
 
             let text = '';
+            let ocrData = null;
             let worker = null;
             try {
                 worker = await _bzWithTimeout(Tesseract.createWorker('eng'), 20000);
                 const result = await _bzWithTimeout(worker.recognize(imageSource), 25000);
-                text = (result && result.data && result.data.text) || '';
+                ocrData = (result && result.data) || null;
+                text = (ocrData && ocrData.text) || '';
             } catch (e) {
                 console.error('Beat Zen: OCR failed', e);
                 return { ok: false, reason: "We couldn't read that screenshot clearly. Please upload a clear, uncropped screenshot of your UPI payment confirmation and tap Try Again." };
@@ -1287,7 +1425,10 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
 
             const hasDate = _bzTextHasTodayDate(text);
             const hasUpi = _bzTextHasUpiSignal(text);
-            const hasAmount = _bzTextHasAmount(text, expectedAmount);
+            // Text-based match first; if that misses (no ₹ symbol OCR'd and
+            // no decimals shown), fall back to the largest-number-on-screen
+            // signal before giving up on the amount check.
+            const hasAmount = _bzTextHasAmount(text, expectedAmount) || _bzOcrLargestAmountMatches(ocrData, expectedAmount);
 
             const checks = [
                 { label: "Today's date", passed: hasDate },
