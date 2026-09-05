@@ -1038,6 +1038,7 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
            beatzen_users/{uid} listener and by bzRenderPremiumView() below. */
         window._bzIsPremium = localStorage.getItem('beatzen_premium') === 'true';
         window._bzPremiumExpiresAt = parseInt(localStorage.getItem('beatzen_premiumExpiresAt') || '0', 10) || 0;
+        window._bzPremiumPlan = localStorage.getItem('beatzen_premiumPlan') || '';
 
         function bzIsPremiumUser() {
             return !!(window._bzIsPremium && window._bzPremiumExpiresAt && Date.now() < window._bzPremiumExpiresAt);
@@ -1115,10 +1116,19 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
            AUTOMATED PAYMENT-SCREENSHOT VERIFICATION
            Before a request ever reaches an admin, we run on-device OCR
            (Tesseract.js, loaded via CDN in index.html) over the uploaded
-           screenshot and check three things in the extracted text:
-             1. Today's date is present, in one of several common formats.
+           screenshot and check two things in the extracted text:
+             1. Today's date is present, in whatever format the app used.
              2. A recognizable UPI app / bank name (or "UPI" itself) is present.
-             3. The amount for the selected plan is present.
+           The date check below is format-agnostic: instead of guessing
+           every string today's date could be written as (which breaks the
+           moment some app spells a month differently — e.g. Google Pay's
+           "Sept" — or a bank app uses its own layout), it pulls anything
+           that *looks* like a date out of the text — numeric (5/9/2026,
+           05-09-2026, 2026.09.05, 05092026...) or with a month name
+           (5 Sept 2026, Sept 5 2026, 5th September, 2026...) — parses it
+           into actual day/month/year numbers, and compares those to
+           today's real date. That works for any bank/UPI app without
+           needing to know its exact format ahead of time.
            This is a best-effort client-side check, not a payment-gateway
            verification — OCR can misread compressed/blurry screenshots, so
            treat it as a first filter that catches wrong/fake/unrelated
@@ -1127,52 +1137,85 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
            way (via the existing beatzen_premium_requests review flow).
            ───────────────────────────────────────────────────────────── */
 
-        function _bzPad2(n) { return String(n).padStart(2, '0'); }
-
-        // Builds a broad set of "today" date strings covering the sepArator/
-        // ordering/format conventions different UPI apps stamp on receipts.
-        function _bzTodayDateVariants() {
-            const now = new Date();
-            const day = now.getDate();
-            const month = now.getMonth() + 1;
-            const year = now.getFullYear();
-            const yearShort = String(year).slice(-2);
-            const d = String(day), dp = _bzPad2(day);
-            const m = String(month), mp = _bzPad2(month);
-            const monthsShort = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-            const monthsLong = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-            const mShort = monthsShort[month - 1];
-            const mLong = monthsLong[month - 1];
-
-            return [
-                d + '/' + m + '/' + year, dp + '/' + mp + '/' + year,
-                m + '/' + d + '/' + year, mp + '/' + dp + '/' + year,
-                d + '/' + m + '/' + yearShort, dp + '/' + mp + '/' + yearShort,
-                m + '/' + d + '/' + yearShort, mp + '/' + dp + '/' + yearShort,
-                d + '-' + m + '-' + year, dp + '-' + mp + '-' + year,
-                dp + '-' + mp + '-' + yearShort,
-                year + '-' + mp + '-' + dp,
-                d + ' ' + mShort + ' ' + year, dp + ' ' + mShort + ' ' + year,
-                d + ' ' + mLong + ' ' + year, dp + ' ' + mLong + ' ' + year,
-                mShort + ' ' + d + ', ' + year, mShort + ' ' + dp + ', ' + year,
-                mShort + ' ' + d + ' ' + year, mShort + ' ' + dp + ' ' + year,
-                mLong + ' ' + d + ', ' + year, mLong + ' ' + dp + ', ' + year,
-                dp + mp + year, dp + mp + yearShort
-            ].map(function (v) { return v.toLowerCase(); });
-        }
+        const _BZ_MONTH_ALIASES = {
+            jan: 1, january: 1,
+            feb: 2, february: 2,
+            mar: 3, march: 3,
+            apr: 4, april: 4,
+            may: 5,
+            jun: 6, june: 6,
+            jul: 7, july: 7,
+            aug: 8, august: 8,
+            sep: 9, sept: 9, september: 9, // Google Pay spells this one "Sept"
+            oct: 10, october: 10,
+            nov: 11, november: 11,
+            dec: 12, december: 12
+        };
+        const _BZ_MONTH_WORD_RE = '(' + Object.keys(_BZ_MONTH_ALIASES).join('|') + ')';
 
         function _bzTextHasTodayDate(text) {
-            // Strip any time-of-day (e.g. "10:36 am") first — only the
-            // calendar date should be checked, never the payment time.
-            const noTime = (text || '').replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ');
-            const norm = noTime.toLowerCase();
-            const normCompact = norm.replace(/[\s,\/\-]/g, '');
-            const variants = _bzTodayDateVariants();
-            for (let i = 0; i < variants.length; i++) {
-                if (norm.indexOf(variants[i]) !== -1) return true;
-                const compact = variants[i].replace(/[\s,\/\-]/g, '');
-                if (compact.length >= 5 && normCompact.indexOf(compact) !== -1) return true;
+            const now = new Date();
+            const todayDay = now.getDate();
+            const todayMonth = now.getMonth() + 1;
+            const todayYear = now.getFullYear();
+            const todayYearShort = todayYear % 100;
+
+            function yearMatches(y) {
+                return y >= 1000 ? y === todayYear : y === todayYearShort;
             }
+            function isTodayDMY(day, month, year) {
+                return day === todayDay && month === todayMonth && yearMatches(year);
+            }
+            // Tries every reasonable way to assign three raw numbers to
+            // (day, month, year) — covers DD/MM/YYYY, MM/DD/YYYY,
+            // YYYY/MM/DD and every other ordering, without needing to know
+            // which convention a given app used.
+            function anyOrderMatchesToday(a, b, c) {
+                return isTodayDMY(a, b, c) || isTodayDMY(a, c, b) ||
+                    isTodayDMY(b, a, c) || isTodayDMY(b, c, a) ||
+                    isTodayDMY(c, a, b) || isTodayDMY(c, b, a);
+            }
+
+            // Strip time-of-day (e.g. "10:36 am") first so it's never
+            // mistaken for part of a date.
+            const clean = (text || '').replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ');
+            let m;
+
+            // ── Numeric, separated: 5/9/2026, 05-09-2026, 2026.09.05 ──
+            const numRe = /\b(\d{1,4})[\/\-.](\d{1,4})[\/\-.](\d{1,4})\b/g;
+            while ((m = numRe.exec(clean))) {
+                if (anyOrderMatchesToday(parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10))) return true;
+            }
+
+            // ── Numeric, no separators: 05092026, 050926 ──
+            const compactRe = /\b(\d{6}|\d{8})\b/g;
+            while ((m = compactRe.exec(clean))) {
+                const s = m[1];
+                // Each candidate is [dayStr, monthStr, yearStr].
+                const candidates = s.length === 8 ? [
+                    [s.slice(0, 2), s.slice(2, 4), s.slice(4, 8)], // DDMMYYYY
+                    [s.slice(2, 4), s.slice(0, 2), s.slice(4, 8)], // MMDDYYYY
+                    [s.slice(6, 8), s.slice(4, 6), s.slice(0, 4)]  // YYYYMMDD
+                ] : [
+                    [s.slice(0, 2), s.slice(2, 4), s.slice(4, 6)], // DDMMYY
+                    [s.slice(2, 4), s.slice(0, 2), s.slice(4, 6)], // MMDDYY
+                    [s.slice(4, 6), s.slice(2, 4), s.slice(0, 2)]  // YYMMDD
+                ];
+                for (let i = 0; i < candidates.length; i++) {
+                    if (isTodayDMY(parseInt(candidates[i][0], 10), parseInt(candidates[i][1], 10), parseInt(candidates[i][2], 10))) return true;
+                }
+            }
+
+            // ── Month name, either order: "5 Sept 2026" / "Sept 5, 2026" ──
+            const dmyRe = new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s,]+' + _BZ_MONTH_WORD_RE + '[\\s,]+(\\d{2,4})\\b', 'gi');
+            while ((m = dmyRe.exec(clean))) {
+                if (isTodayDMY(parseInt(m[1], 10), _BZ_MONTH_ALIASES[m[2].toLowerCase()], parseInt(m[3], 10))) return true;
+            }
+            const mdyRe = new RegExp('\\b' + _BZ_MONTH_WORD_RE + '[\\s,]+(\\d{1,2})(?:st|nd|rd|th)?[\\s,]+(\\d{2,4})\\b', 'gi');
+            while ((m = mdyRe.exec(clean))) {
+                if (isTodayDMY(parseInt(m[2], 10), _BZ_MONTH_ALIASES[m[1].toLowerCase()], parseInt(m[3], 10))) return true;
+            }
+
             return false;
         }
 
@@ -1344,22 +1387,29 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             if (_bzPremiumRequestUnsub) { _bzPremiumRequestUnsub(); _bzPremiumRequestUnsub = null; }
         }
 
-        // "2d 05:11:42" once more than a day remains, "05:11:42" otherwise.
-        function _bzFormatPremiumCountdown(ms) {
-            const totalSec = Math.max(0, Math.floor(ms / 1000));
-            const days = Math.floor(totalSec / 86400);
-            const hours = Math.floor((totalSec % 86400) / 3600);
-            const mins = Math.floor((totalSec % 3600) / 60);
-            const secs = totalSec % 60;
-            const pad = function (n) { return String(n).padStart(2, '0'); };
-            return (days > 0 ? days + 'd ' : '') + pad(hours) + ':' + pad(mins) + ':' + pad(secs);
+        // Plan id ('trial' / 'month') → the same human-readable label shown
+        // on the plan cards and in the Admin Dashboard.
+        function _bzPremiumPlanLabel(id) {
+            return id === 'trial' ? '1 Day Trial' : (id === 'month' ? '1 Month' : 'Premium');
+        }
+
+        // "5 Sep 2026, 11:59 PM"
+        function _bzFormatPremiumEndDate(ms) {
+            if (!ms) return '—';
+            try {
+                return new Date(ms).toLocaleString('en-IN', {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                    hour: 'numeric', minute: '2-digit', hour12: true
+                });
+            } catch (_) { return '—'; }
         }
 
         // Called every second by _bzPremiumTick. Keeps the "Activated" view's
-        // sub-line ticking down live, and — the instant it reaches zero —
-        // flips the local premium flag off, re-applies gating immediately,
-        // and (only if that view is still the one on screen) bounces it back
-        // to the plan picker instead of leaving a stale "Active" screen up.
+        // sub-line showing the plan + exact expiry, and — the instant the
+        // clock passes expiresAt — flips the local premium flag off,
+        // re-applies gating immediately, and (only if that view is still the
+        // one on screen) bounces it back to the plan picker instead of
+        // leaving a stale "Active" screen up.
         function _bzUpdatePremiumCountdown() {
             const sub = document.getElementById('bz-premium-active-sub');
             if (!sub || !window._bzPremiumExpiresAt) return;
@@ -1372,15 +1422,22 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
                 if (activeView && activeView.style.display !== 'none') _bzShowPremiumSubView('plans');
                 return;
             }
-            sub.textContent = 'Time left: ' + _bzFormatPremiumCountdown(remaining);
+            sub.textContent = 'Your premium plan of ' + _bzPremiumPlanLabel(window._bzPremiumPlan) +
+                ' ending in ' + _bzFormatPremiumEndDate(window._bzPremiumExpiresAt);
         }
 
-        function _bzSetPremiumActiveLocal(expiresAt) {
+        // planId is optional — omit it (e.g. when just re-showing an
+        // already-cached premium state) to keep whatever plan is already
+        // stored, or pass it (from a Firestore request doc's `plan` field)
+        // to update it.
+        function _bzSetPremiumActiveLocal(expiresAt, planId) {
             window._bzIsPremium = true;
             window._bzPremiumExpiresAt = expiresAt || 0;
+            if (planId !== undefined) window._bzPremiumPlan = planId || '';
             try {
                 localStorage.setItem('beatzen_premium', 'true');
                 localStorage.setItem('beatzen_premiumExpiresAt', String(window._bzPremiumExpiresAt));
+                if (planId !== undefined) localStorage.setItem('beatzen_premiumPlan', window._bzPremiumPlan);
             } catch (_) { /* private browsing, etc — non-fatal */ }
             bzApplyPremiumGating();
             _bzUpdatePremiumCountdown();
@@ -1414,7 +1471,7 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
                         _bzShowPremiumSubView('pending');
                     } else if (d.status === 'active') {
                         if (d.expiresAt && Date.now() < d.expiresAt) {
-                            _bzSetPremiumActiveLocal(d.expiresAt);
+                            _bzSetPremiumActiveLocal(d.expiresAt, d.plan);
                             _bzShowPremiumSubView('active');
                         } else {
                             // Approved previously but has since expired.
