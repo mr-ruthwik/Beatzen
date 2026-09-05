@@ -1116,9 +1116,12 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
            AUTOMATED PAYMENT-SCREENSHOT VERIFICATION
            Before a request ever reaches an admin, we run on-device OCR
            (Tesseract.js, loaded via CDN in index.html) over the uploaded
-           screenshot and check two things in the extracted text:
+           screenshot and check three things in the extracted text:
              1. Today's date is present, in whatever format the app used.
              2. A recognizable UPI app / bank name (or "UPI" itself) is present.
+             3. The amount paid matches the amount for the plan the user
+                selected — so a screenshot for a different (e.g. lower)
+                amount than the selected plan is rejected automatically.
            The date check below is format-agnostic: instead of guessing
            every string today's date could be written as (which breaks the
            moment some app spells a month differently — e.g. Google Pay's
@@ -1226,9 +1229,28 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
                 'paytm', 'bhim', 'amazon pay', 'whatsapp pay', 'cred', 'navi', 'mobikwik',
                 'freecharge', '@ybl', '@okaxis', '@okhdfcbank', '@okicici', '@oksbi', '@okbizaxis',
                 '@paytm', '@apl', 'utr', 'upi ref', 'upi id', 'vpa', 'transaction id',
-                'ruthwik143', '@nyes'
+                'beatzenapp', '@naviaxis'
             ];
             return keywords.some(function (k) { return norm.indexOf(k) !== -1; });
+        }
+
+        // Checks whether the paid amount shown in the screenshot matches
+        // the amount for the plan the user selected. Accepts either a
+        // currency-prefixed match ("₹20", "Rs 20", "INR 20") or the
+        // ".00"/".0" decimal formatting payment apps commonly use for
+        // amounts ("20.00") — both anchored so the amount can't just be
+        // a substring of a longer number (a UTR, a date, etc). This is a
+        // best-effort text match like the date/UPI checks above, not an
+        // exact parse of every possible receipt layout.
+        function _bzTextHasAmount(text, amount) {
+            if (amount === undefined || amount === null || amount === '') return true;
+            const norm = (text || '').replace(/,/g, '');
+            const amtStr = String(Math.round(Number(amount)));
+            if (!amtStr || amtStr === 'NaN') return true;
+            const esc = amtStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const currencyRe = new RegExp('(?<![a-z])(?:₹|rs\\.?|inr|rupees)\\s*' + esc + '(?:\\.0{1,2})?(?!\\d)', 'i');
+            const decimalRe = new RegExp('(?<!\\d)' + esc + '\\.0{1,2}(?!\\d)');
+            return currencyRe.test(norm) || decimalRe.test(norm);
         }
 
         function _bzWithTimeout(promise, ms) {
@@ -1241,10 +1263,11 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             });
         }
 
-        // Runs OCR on the screenshot and checks it against: today's date and
-        // a UPI app/bank name. Resolves { ok:true } on a pass, or
-        // { ok:false, reason } with a human-readable explanation.
-        async function bzVerifyPaymentScreenshot(imageSource) {
+        // Runs OCR on the screenshot and checks it against: today's date, a
+        // UPI app/bank name, and the amount for the given plan. Resolves
+        // { ok:true } on a pass, or { ok:false, reason } with a
+        // human-readable explanation.
+        async function bzVerifyPaymentScreenshot(imageSource, expectedAmount) {
             if (typeof Tesseract === 'undefined' || !Tesseract.createWorker) {
                 return { ok: false, reason: "Couldn't run screenshot verification right now (verification tool failed to load). Check your connection and tap Try Again." };
             }
@@ -1264,13 +1287,15 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
 
             const hasDate = _bzTextHasTodayDate(text);
             const hasUpi = _bzTextHasUpiSignal(text);
+            const hasAmount = _bzTextHasAmount(text, expectedAmount);
 
             const checks = [
                 { label: "Today's date", passed: hasDate },
-                { label: 'A UPI app / bank name', passed: hasUpi }
+                { label: 'A UPI app / bank name', passed: hasUpi },
+                { label: 'Amount paid: ₹' + expectedAmount, passed: hasAmount }
             ];
 
-            if (hasDate && hasUpi) return { ok: true, checks: checks };
+            if (hasDate && hasUpi && hasAmount) return { ok: true, checks: checks };
 
             return { ok: false, checks: checks };
         }
@@ -1293,7 +1318,7 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             // ever reaches an admin. A failed check rejects immediately and
             // sends the user to the "Payment Failed" view with Try Again —
             // nothing gets written to Firestore for a screenshot that fails here.
-            const verification = await bzVerifyPaymentScreenshot(_bzPremiumScreenshotFile || _bzPremiumScreenshotBase64);
+            const verification = await bzVerifyPaymentScreenshot(_bzPremiumScreenshotFile || _bzPremiumScreenshotBase64, _bzPremiumSelectedPlan.amount);
             if (!verification.ok) {
                 _bzShowPremiumVerificationFailed(verification);
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for Verification'; }
@@ -1308,8 +1333,8 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
                 // The request doc (with screenshot) is still written for the
                 // Admin Dashboard — flagged autoApproved so admin can double
                 // check it later and Cancel Premium if it turns out invalid.
-                // The plan the user selected in the UI (amount is no longer
-                // cross-checked against the screenshot).
+                // The plan the user selected in the UI — its amount was
+                // already confirmed to match the screenshot above.
                 const grantedPlan = _bzPremiumSelectedPlan;
                 const expiresAt = Date.now() + grantedPlan.hours * 3600000;
                 await db.collection('beatzen_premium_requests').doc(user.uid).set({
