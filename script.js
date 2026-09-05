@@ -1116,12 +1116,9 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
            AUTOMATED PAYMENT-SCREENSHOT VERIFICATION
            Before a request ever reaches an admin, we run on-device OCR
            (Tesseract.js, loaded via CDN in index.html) over the uploaded
-           screenshot and check three things in the extracted text:
+           screenshot and check two things in the extracted text:
              1. Today's date is present, in whatever format the app used.
              2. A recognizable UPI app / bank name (or "UPI" itself) is present.
-             3. The amount paid matches the amount for the plan the user
-                selected — so a screenshot for a different (e.g. lower)
-                amount than the selected plan is rejected automatically.
            The date check below is format-agnostic: instead of guessing
            every string today's date could be written as (which breaks the
            moment some app spells a month differently — e.g. Google Pay's
@@ -1137,13 +1134,6 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
            The UPI/bank-name check recognizes both third-party UPI apps
            (Google Pay, PhonePe, Paytm, ...) and the major Indian banks'
            own apps/net-banking, plus generic banking terms (IFSC, A/C no).
-           The amount check tries two independent signals: a text match
-           (currency-prefixed or decimal-formatted) and, if that misses,
-           the tallest numeric text recognized anywhere on the screenshot —
-           payment-confirmation screens near-universally render the amount
-           as the single largest text, which catches the very common case
-           of OCR failing to read the ₹ symbol and the app showing a
-           decimal-free whole-rupee amount.
            This is a best-effort client-side check, not a payment-gateway
            verification — OCR can misread compressed/blurry screenshots, so
            treat it as a first filter that catches wrong/fake/unrelated
@@ -1287,108 +1277,6 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             return keywords.some(function (k) { return norm.indexOf(k) !== -1; });
         }
 
-        // Strips date- and time-of-day-looking substrings out of OCR text.
-        // Used before the bare-number amount fallback below so a plan
-        // amount like "20" can't accidentally match a day-of-month, a
-        // compact date, or a clock time that happens to share the same
-        // digits (e.g. "8:20 pm" or "20/09/2026"). Reuses the same patterns
-        // as _bzTextHasTodayDate so the two stay in sync.
-        function _bzStripDatesAndTimes(text) {
-            let out = (text || '')
-                .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ')
-                .replace(/\b\d{1,4}[\/\-.]\d{1,4}[\/\-.]\d{1,4}\b/g, ' ')
-                .replace(/\b(?:\d{6}|\d{8})\b/g, ' ');
-            const dmyRe = new RegExp('\\b\\d{1,2}(?:st|nd|rd|th)?[\\s,]+' + _BZ_MONTH_WORD_RE + '[\\s,]+\\d{2,4}\\b', 'gi');
-            const mdyRe = new RegExp('\\b' + _BZ_MONTH_WORD_RE + '[\\s,]+\\d{1,2}(?:st|nd|rd|th)?[\\s,]+\\d{2,4}\\b', 'gi');
-            const dmRe = new RegExp('\\b\\d{1,2}(?:st|nd|rd|th)?[\\s,]+' + _BZ_MONTH_WORD_RE + '\\b', 'gi');
-            const mdRe = new RegExp('\\b' + _BZ_MONTH_WORD_RE + '[\\s,]+\\d{1,2}(?:st|nd|rd|th)?\\b', 'gi');
-            return out.replace(dmyRe, ' ').replace(mdyRe, ' ').replace(dmRe, ' ').replace(mdRe, ' ');
-        }
-
-        // Checks whether the paid amount shown in the screenshot's plain
-        // text matches the amount for the selected plan. Tries three
-        // signals, from strictest to loosest:
-        //   1. Currency-prefixed: "₹20", "Rs 20", "INR 20"
-        //   2. Decimal-formatted: "20.00" (no currency word needed)
-        //   3. A bare, standalone number — only after dates/times are
-        //      stripped out, so it can't fire on a day-of-month or a clock
-        //      time that happens to share the plan's digits.
-        // (1) and (2) are written without lookbehind assertions, since
-        // older WebViews (pre-2023 iOS Safari, older embedded WebViews)
-        // don't support `(?<!...)` and would throw instead of just not
-        // matching. This is a best-effort text match, not an exact parse
-        // of every possible receipt layout — see _bzOcrLargestAmountMatches
-        // below for a second, independent signal based on font size.
-        function _bzTextHasAmount(text, amount) {
-            if (amount === undefined || amount === null || amount === '') return true;
-            const raw = (text || '').replace(/,/g, '');
-            const amtStr = String(Math.round(Number(amount)));
-            if (!amtStr || amtStr === 'NaN') return true;
-            const esc = amtStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-            const currencyRe = new RegExp('(^|[^a-z])(?:₹|rs\\.?|inr|rupees)\\s*' + esc + '(?:\\.0{1,2})?(?!\\d)', 'i');
-            if (currencyRe.test(raw)) return true;
-
-            const decimalRe = new RegExp('(^|[^0-9])' + esc + '\\.0{1,2}(?!\\d)');
-            if (decimalRe.test(raw)) return true;
-
-            const bareRe = new RegExp('\\b' + esc + '\\b');
-            return bareRe.test(_bzStripDatesAndTimes(raw));
-        }
-
-        // Pulls every recognized word + its bounding-box height out of a
-        // Tesseract.js result, regardless of whether it came back as a flat
-        // `words` array or nested `blocks → paragraphs → lines → words`
-        // (the shape Tesseract.js v5 uses by default). Returns [] rather
-        // than throwing if neither shape is present, so callers degrade
-        // gracefully to the plain-text checks above.
-        function _bzFlattenOcrWords(data) {
-            const out = [];
-            function push(w) {
-                if (w && w.text && w.bbox && typeof w.bbox.y0 === 'number' && typeof w.bbox.y1 === 'number') {
-                    out.push({ text: w.text, height: w.bbox.y1 - w.bbox.y0 });
-                }
-            }
-            if (data && Array.isArray(data.words)) data.words.forEach(push);
-            if (data && Array.isArray(data.blocks)) {
-                data.blocks.forEach(function (block) {
-                    (block.paragraphs || []).forEach(function (para) {
-                        (para.lines || []).forEach(function (line) {
-                            (line.words || []).forEach(push);
-                        });
-                    });
-                });
-            }
-            return out;
-        }
-
-        // Second, independent amount signal: UPI/bank payment-confirmation
-        // screens almost universally render the paid amount as the single
-        // largest text on the screen — bigger than "Paid to X", the bank
-        // name, or the date below it. OCR very often garbles or drops the
-        // ₹ symbol entirely and plenty of apps show whole-rupee amounts
-        // with no decimal point at all, which defeats plain text matching
-        // no matter the amount. This sidesteps that: strip every recognized
-        // word down to its digits and check whether the *tallest* numeric
-        // word on the page equals the expected amount.
-        function _bzOcrLargestAmountMatches(data, amount) {
-            if (amount === undefined || amount === null || amount === '') return true;
-            const target = Math.round(Number(amount));
-            if (!isFinite(target)) return true;
-
-            const words = _bzFlattenOcrWords(data);
-            let tallest = null;
-            words.forEach(function (w) {
-                const digits = w.text.replace(/[^0-9.]/g, '');
-                if (!digits) return;
-                const val = Math.round(parseFloat(digits));
-                if (!isFinite(val)) return;
-                if (!tallest || w.height > tallest.height) tallest = { value: val, height: w.height };
-            });
-
-            return !!tallest && tallest.value === target;
-        }
-
         function _bzWithTimeout(promise, ms) {
             return new Promise(function (resolve, reject) {
                 const timer = setTimeout(function () { reject(new Error('Verification timed out')); }, ms);
@@ -1399,11 +1287,10 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             });
         }
 
-        // Runs OCR on the screenshot and checks it against: today's date, a
-        // UPI app/bank name, and the amount for the given plan. Resolves
-        // { ok:true } on a pass, or { ok:false, reason } with a
-        // human-readable explanation.
-        async function bzVerifyPaymentScreenshot(imageSource, expectedAmount) {
+        // Runs OCR on the screenshot and checks it against: today's date and a
+        // UPI app/bank name. Resolves { ok:true } on a pass, or
+        // { ok:false, reason } with a human-readable explanation.
+        async function bzVerifyPaymentScreenshot(imageSource) {
             if (typeof Tesseract === 'undefined' || !Tesseract.createWorker) {
                 return { ok: false, reason: "Couldn't run screenshot verification right now (verification tool failed to load). Check your connection and tap Try Again." };
             }
@@ -1425,27 +1312,13 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
 
             const hasDate = _bzTextHasTodayDate(text);
             const hasUpi = _bzTextHasUpiSignal(text);
-            // Text-based match first; if that misses (no ₹ symbol OCR'd and
-            // no decimals shown), fall back to the largest-number-on-screen
-            // signal before giving up on the amount check.
-            const hasAmount = _bzTextHasAmount(text, expectedAmount) || _bzOcrLargestAmountMatches(ocrData, expectedAmount);
 
             const checks = [
                 { label: "Today's date", passed: hasDate },
-                { label: 'A UPI app / bank name', passed: hasUpi },
-                { label: 'Amount paid: ₹' + expectedAmount, passed: hasAmount }
+                { label: 'A UPI app / bank name', passed: hasUpi }
             ];
 
-            if (hasDate && hasUpi && hasAmount) return { ok: true, checks: checks };
-
-            // Debug aid: open the browser/remote devtools console to see
-            // exactly what OCR extracted and why a check failed, instead of
-            // having to re-share the screenshot to diagnose it.
-            console.warn('Beat Zen: payment verification failed', {
-                expectedAmount: expectedAmount,
-                checks: checks,
-                rawOcrText: text
-            });
+            if (hasDate && hasUpi) return { ok: true, checks: checks };
 
             return { ok: false, checks: checks };
         }
@@ -1464,11 +1337,11 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
 
             if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verifying Screenshot…'; }
 
-            // Auto-check the screenshot (date / UPI name / amount) BEFORE this
-            // ever reaches an admin. A failed check rejects immediately and
-            // sends the user to the "Payment Failed" view with Try Again —
-            // nothing gets written to Firestore for a screenshot that fails here.
-            const verification = await bzVerifyPaymentScreenshot(_bzPremiumScreenshotFile || _bzPremiumScreenshotBase64, _bzPremiumSelectedPlan.amount);
+            // Auto-check the screenshot (date / UPI name) BEFORE this ever
+            // reaches an admin. A failed check rejects immediately and sends
+            // the user to the "Payment Failed" view with Try Again — nothing
+            // gets written to Firestore for a screenshot that fails here.
+            const verification = await bzVerifyPaymentScreenshot(_bzPremiumScreenshotFile || _bzPremiumScreenshotBase64);
             if (!verification.ok) {
                 _bzShowPremiumVerificationFailed(verification);
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for Verification'; }
@@ -1482,9 +1355,8 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
                 // Premium immediately instead of waiting on manual admin review.
                 // The request doc (with screenshot) is still written for the
                 // Admin Dashboard — flagged autoApproved so admin can double
-                // check it later and Cancel Premium if it turns out invalid.
-                // The plan the user selected in the UI — its amount was
-                // already confirmed to match the screenshot above.
+                // check it later (including that the amount paid matches the
+                // selected plan) and Cancel Premium if it turns out invalid.
                 const grantedPlan = _bzPremiumSelectedPlan;
                 const expiresAt = Date.now() + grantedPlan.hours * 3600000;
                 await db.collection('beatzen_premium_requests').doc(user.uid).set({
