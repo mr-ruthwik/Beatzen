@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beat Zen - Premium</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- iOS / Safari home screen icons (Apple ignores manifest icons) -->
+    <link rel="apple-touch-icon"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_512,h_512,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+    <link rel="apple-touch-icon" sizes="180x180"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_180,h_180,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+    <link rel="apple-touch-icon" sizes="152x152"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_152,h_152,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+    <link rel="apple-touch-icon" sizes="120x120"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_120,h_120,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+
+    <!-- Android Chrome / browser tab favicon -->
+    <link rel="icon" type="image/jpeg" sizes="192x192"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_192,h_192,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+    <link rel="shortcut icon"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_32,h_32,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+
+    <!-- PWA theme color (status bar color on Android) -->
+    <meta id="bz-theme-color" name="theme-color" content="#12121a">
+
+    <!-- iOS PWA settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Beat Zen">
+
+    <!-- Android / Windows PWA settings -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Beat Zen">
+
+    <!-- Fullscreen player display font (matches Now Playing screen design) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css?v=11">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha384-nRgPTkuX86pH8yjPJUAFuASXQSSl2/bBUiNV47vSYpKFxHJhbcrGnmlYpYJMeD7a" crossorigin="anonymous"
+        media="print" onload="this.media='all'">
+
+    <!-- FAST-PATH AUTH -->
+    <script>
+        (function bzAuthFastPath() {
+            try {
+                var hasSession = false;
+                // Scan ALL localStorage keys for any Firebase auth entry.
+                // Firebase LOCAL persistence writes: firebase:authUser:<apiKey>:[DEFAULT]
+                // We scan rather than hardcode so it works across SDK versions.
+                for (var _i = 0; _i < localStorage.length; _i++) {
+                    var _k = localStorage.key(_i);
+                    if (_k && _k.indexOf('firebase:authUser:') === 0) {
+                        var _v = localStorage.getItem(_k);
+                        if (_v && _v.length > 10) { hasSession = true; break; }
+                    }
+                }
+                // Fallback: beatZen_session_uid is written by auth.js after Firebase
+                // confirms sign-in and persists across reloads.
+                if (!hasSession) {
+                    hasSession = !!localStorage.getItem('beatZen_session_uid');
+                }
+                if (hasSession) {
+                    document.documentElement.classList.add('bz-signed-in');
+                } else {
+                    // No cached session — mark as guest so auth gate shows immediately
+                    document.documentElement.classList.add('bz-guest');
+                }
+            } catch (_) {
+                // If localStorage is blocked (e.g. private mode), assume guest
+                document.documentElement.classList.add('bz-guest');
+            }
+        })();
+    </script>
+    <!-- CSS responding to bz-signed-in -->
+
+    <!-- MOBILE TAP FIX: inline touch-action:manipulation on player controls -->
+
+    <!-- Loader styles inlined — renders splash before style.css parses -->
+</head>
+
+<body>
+
+    <div id="bz-loader-overlay">
+        <div class="bz-loader-ring">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="bzRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#7c3aed" />
+                        <stop offset="50%" stop-color="#2575fc" />
+                        <stop offset="100%" stop-color="#0ea5e9" />
+                    </linearGradient>
+                </defs>
+                <circle class="bz-loader-ring-track" cx="50" cy="50" r="46" />
+                <circle class="bz-loader-ring-fill" cx="50" cy="50" r="46" />
+            </svg>
+            <img src="https://res.cloudinary.com/beatzenapp/image/upload/v1782654641/Logo_kmpfjf.jpg" alt="Beat Zen">
+        </div>
+        <div class="bz-loader-brand">Beat Zen</div>
+        <div class="bz-loader-tagline">Premium Music</div>
+        <div class="bz-loader-status-wrap">
+            <div class="bz-loader-dots"><span></span><span></span><span></span><span></span></div>
+            <div class="bz-loader-status" id="bz-loader-status">Seamless listening experience across every device.</div>
+            <!-- Slow network warning — shown after 3s if still loading -->
+            <div id="bz-slow-net-banner">
+                <span class="bz-slow-net-icon">📶</span>
+                <div class="bz-slow-net-text">
+                    <span class="bz-slow-net-title">Slow connection detected</span>
+                    <span class="bz-slow-net-sub">Try switching to a faster network or Wi-Fi</span>
+                </div>
+                <button class="bz-slow-net-dismiss"
+                    onclick="document.getElementById('bz-slow-net-banner').style.display='none'"
+                    title="Dismiss">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- iOS manual install banner -->
+    <div id="bz-ios-banner">
+        <button class="bz-ios-close"
+            onclick="document.getElementById('bz-ios-banner').classList.remove('visible')">✕</button>
+        <div class="bz-ios-title">Add to Home Screen</div>
+        <div class="bz-ios-steps">
+            <div class="bz-ios-step">
+                <div class="bz-ios-num">1</div><span>Tap the <strong>Share</strong> button at the bottom of
+                    Safari</span>
+            </div>
+            <div class="bz-ios-step">
+                <div class="bz-ios-num">2</div><span>Tap <strong>"Add to Home Screen"</strong></span>
+            </div>
+            <div class="bz-ios-step">
+                <div class="bz-ios-num">3</div><span>Tap <strong>Add</strong> — Beat Zen appears on your home
+                    screen</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating slow-network toast shown after app launches on slow -->
+    <div id="bz-slow-net-toast">
+        <span class="bz-slow-net-icon">📶</span>
+        <div class="bz-slow-net-text">
+            <span class="bz-slow-net-title">Slow connection detected</span>
+            <span class="bz-slow-net-sub">Switch to Wi-Fi or a faster network for better experience</span>
+        </div>
+        <button class="bz-slow-net-dismiss" id="bz-slow-net-toast-close" title="Dismiss">✕</button>
+    </div>
+
+    <!-- Offline / no-internet toast -->
+    <div id="bz-offline-toast">
+        <span class="bz-slow-net-icon">🔴</span>
+        <div class="bz-slow-net-text">
+            <span class="bz-slow-net-title" style="color:#f87171;">No internet connection</span>
+            <span class="bz-slow-net-sub">Please connect to a network to continue</span>
+        </div>
+        <button class="bz-slow-net-dismiss" id="bz-offline-toast-close" title="Dismiss">✕</button>
+    </div>
+
+    <!-- Back online restored toast -->
+    <div id="bz-online-toast">
+        <span class="bz-slow-net-icon">✅</span>
+        <div class="bz-slow-net-text">
+            <span class="bz-slow-net-title" style="color:#4ade80;">Back online!</span>
+            <span class="bz-slow-net-sub">Connection restored — everything is working again</span>
+        </div>
+        <button class="bz-slow-net-dismiss" id="bz-online-toast-close" title="Dismiss">✕</button>
+    </div>
+
+    <!-- Mobile-only top bar: centered logo with the profile button pinned -->
+    <header id="bz-mobile-topbar" class="bz-mobile-topbar" aria-label="Beat Zen">
+        <div class="bz-mobile-topbar-spacer" aria-hidden="true"></div>
+        <div class="bz-mobile-topbar-brand">
+            <img class="bz-mobile-topbar-logo"
+                src="https://res.cloudinary.com/beatzenapp/image/upload/w_64,h_64,c_fill,f_png,q_auto/v1782654641/Logo_kmpfjf.jpg"
+                alt="" aria-hidden="true">
+            <span class="bz-mobile-topbar-title">Beat Zen</span>
+        </div>
+        <button id="bz-mobile-profile-btn" class="bz-mobile-topbar-profile" type="button"
+            aria-label="View your profile">
+            <img id="bz-mobile-topbar-avatar-img" class="bz-mobile-topbar-avatar-img" src="" alt=""
+                style="display:none;">
+            <span id="bz-mobile-topbar-avatar-init" class="bz-mobile-topbar-avatar-init bz-topbar-avatar--guest">
+                <i class="fas fa-user-circle"></i>
+            </span>
+        </button>
+    </header>
+
+    <nav class="navbar" aria-label="Main Navigation">
+        <div class="nav-links">
+            <a href="#" id="home-link" aria-label="Go to Home"><span class="nav-link-content"><i
+                        class="fas fa-home"></i><span>Home</span></span></a>
+            <a href="#" id="search-link" aria-label="Search Music"><span class="nav-link-content"><i
+                        class="fas fa-search"></i><span>Search</span></span></a>
+            <a href="#" id="playlists-link" aria-label="View Playlists"><span class="nav-link-content"><i
+                        class="fas fa-compact-disc"></i><span>Playlists</span></span></a>
+            <a href="#" id="premium-link" aria-label="Premium"><span class="nav-link-content"><i
+                        class="fas fa-crown"></i><span>Premium</span></span></a>
+            <a href="#" id="settings-link" aria-label="Settings"><span class="nav-link-content"><i
+                        class="fas fa-cog"></i><span>Settings</span></span></a>
+            <a href="#" id="profile-link" class="bz-nav-desktop-only" aria-label="Profile"><span
+                    class="nav-link-content"><i class="fas fa-user"></i><span>Profile</span></span></a>
+            <a href="#" id="updates-link" aria-label="Updates"><span class="nav-link-content"><i
+                        class="fas fa-bell"></i><span>Updates</span></span></a>
+        </div>
+    </nav>
+
+    <!-- Year Jump Bar — visible only on Home tab -->
+    <div id="bz-year-jump-bar" class="bz-year-jump-bar" aria-label="Jump to Year" style="display:none;">
+        <div class="bz-year-jump-inner" id="bz-year-jump-inner"></div>
+    </div>
+
+    <!-- Playlist Section Nav Bar — visible only on Playlists tab -->
+    <div id="bz-playlist-nav-bar" class="bz-year-jump-bar bz-playlist-nav-bar" aria-label="Jump to playlist section"
+        style="display:none;">
+        <div class="bz-year-jump-inner" id="bz-playlist-nav-inner">
+            <button class="bz-year-jump-pill bz-playlist-nav-pill active" data-target="bzp-your-playlists"><i
+                    class="fas fa-compact-disc"></i> Your Playlists</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-mfy-section"><i
+                    class="fas fa-wand-magic-sparkles"></i> Made for You</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-rec-section"><i
+                    class="fas fa-compass"></i> Recommended</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-universe-wrap"><i
+                    class="fas fa-infinity"></i> Beat Zen Universe</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-artists-section"><i
+                    class="fas fa-microphone-lines"></i> Artists</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-heroes-section"><i
+                    class="fas fa-star"></i> Heroes</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-la-section"><i
+                    class="fas fa-clock-rotate-left"></i> Listen Again</button>
+        </div>
+    </div>
+
+    <!-- Scroll to Top floating button -->
+    <button id="bz-scroll-top-btn" class="bz-scroll-top-btn" aria-label="Scroll to top" title="Scroll to top"
+        style="display:none;">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <main class="main-content">
+
+        <section id="search-container" class="search-container hidden" aria-label="Search Section">
+            <div class="search-bar-wrapper">
+                <input type="text" id="search-bar" class="search-bar"
+                    placeholder="Search albums, years, songs, artists">
+                <i class="fas fa-search search-icon"></i>
+                <i class="fas fa-times-circle clear-search-icon" id="clear-search" style="display: none;"></i>
+            </div>
+        </section>
+
+        <section id="search-results-container" class="search-results-container"></section>
+        <section id="year-sections-container" class="year-sections-container"></section>
+        <section id="playlists-container" class="playlists-container" style="display: none;"></section>
+        <section id="artists-container" class="artists-container" style="display: none;"></section>
+
+        <section id="updates-container" class="updates-container" style="display: none;">
+            <div class="stg-section bz-updates-section">
+                <i class="fas fa-bell" aria-hidden="true"></i>
+                <p class="bz-updates-placeholder">Upcoming updates will be shown here</p>
+            </div>
+        </section>
+
+        <section id="premium-container" class="premium-container" style="display: none;">
+
+            <!-- VIEW: Plans / Features / Payment / Upload -->
+            <div id="bz-premium-plans-view" class="bz-premium-view">
+                <div class="bz-premium-header">
+                    <div class="bz-premium-header-icon"><i class="fas fa-crown"></i></div>
+                    <h2 class="bz-premium-header-title">Upgrade to Premium</h2>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><span class="bz-step-num">1</span> Choose Your Plan</div>
+                    <div class="bz-premium-plans-grid" id="bz-premium-plans-grid">
+                        <button type="button" class="bz-premium-plan-card" data-plan="trial" data-hours="24"
+                            data-amount="2">
+                            <span class="bz-premium-plan-radio"><i class="fas fa-check"></i></span>
+                            <span class="bz-premium-plan-name">1 Day Trial</span>
+                            <span class="bz-premium-plan-price">₹2</span>
+                        </button>
+                        <button type="button" class="bz-premium-plan-card selected" data-plan="month" data-hours="720"
+                            data-amount="20">
+                            <span class="bz-premium-plan-badge">Best Value</span>
+                            <span class="bz-premium-plan-radio"><i class="fas fa-check"></i></span>
+                            <span class="bz-premium-plan-name">1 Month</span>
+                            <span class="bz-premium-plan-price">₹20</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><span class="bz-step-num">2</span> Pay via UPI</div>
+                    <div class="bz-premium-payment-card">
+                        <div class="bz-premium-amount-row">
+                            <span class="bz-premium-amount-label">Amount Payable</span>
+                            <span class="bz-premium-amount-value" id="bz-premium-amount-value">₹20</span>
+                        </div>
+                        <div class="bz-premium-upi-box">
+                            <span class="bz-premium-upi-label">UPI ID</span>
+                            <div class="bz-premium-upi-id-row">
+                                <span id="bz-premium-upi-id" class="bz-premium-upi-id">ruthwik143@nyes</span>
+                                <button type="button" id="bz-premium-copy-upi-btn" class="bz-premium-upi-copy-btn"
+                                    aria-label="Copy UPI ID"><i class="fas fa-copy"></i> Copy</button>
+                            </div>
+                        </div>
+                        <button type="button" id="bz-premium-show-qr-btn" class="stg-action-btn stg-btn--purple"
+                            style="width:100%; margin-top:10px;">
+                            <i class="fas fa-qrcode"></i> Show QR
+                        </button>
+                        <div id="bz-premium-qr-wrap" class="bz-premium-qr-wrap" style="display:none;">
+                            <img id="bz-premium-qr-img"
+                                src="data:image/png;base64,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"
+                                alt="UPI QR Code" class="bz-premium-qr-img">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><span class="bz-step-num">3</span> Upload Payment Proof</div>
+                    <div class="bz-premium-upload-card">
+                        <input type="file" id="bz-premium-screenshot-input" accept="image/*" style="display:none;">
+                        <p class="bz-premium-upload-hint">Add a screenshot of your UPI payment confirmation so we can
+                            verify it.</p>
+                        <div id="bz-premium-upload-preview-wrap" class="bz-premium-upload-preview-wrap"
+                            style="display:none;">
+                            <img id="bz-premium-upload-preview" class="bz-premium-upload-preview" src=""
+                                alt="Payment screenshot">
+                        </div>
+                        <button type="button" id="bz-premium-upload-btn" class="stg-action-btn stg-btn--green"
+                            style="width:100%;">
+                            <i class="fas fa-camera"></i> Upload Payment Screenshot
+                        </button>
+                        <button type="button" id="bz-premium-submit-btn" class="stg-action-btn stg-btn--blue"
+                            style="width:100%; margin-top:10px; display:none;">
+                            <i class="fas fa-paper-plane"></i> Submit for Verification
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><i class="fas fa-star"></i> What You Get</div>
+                    <ul class="bz-premium-features-list">
+                        <li><i class="fas fa-check"></i> Yearly Browse Albums</li>
+                        <li><i class="fas fa-check"></i> Sleep Timer</li>
+                        <li><i class="fas fa-check"></i> Shareable Song Cards</li>
+                        <li><i class="fas fa-check"></i> Made For You Recommendations</li>
+                        <li><i class="fas fa-check"></i> Scheduled Dark Mode</li>
+                        <li><i class="fas fa-check"></i> Beat Zen Universe (Year-wise Playlists)</li>
+                        <li><i class="fas fa-check"></i> Keyboard Shortcuts</li>
+                        <li><i class="fas fa-check"></i> Song Requests &amp; Feedback</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- VIEW: Verifying (pending admin review) -->
+            <div id="bz-premium-pending-view" class="bz-premium-view bz-premium-status-view" style="display:none;">
+                <div class="bz-premium-spinner"></div>
+                <h3>Verifying Your Payment</h3>
+                <p class="bz-premium-status-sub">This usually takes a few minutes</p>
+            </div>
+
+            <!-- VIEW: Activated -->
+            <div id="bz-premium-active-view" class="bz-premium-view bz-premium-status-view" style="display:none;">
+                <div class="bz-premium-success-icon"><i class="fas fa-check"></i></div>
+                <h3>Premium Activated</h3>
+                <p class="bz-premium-status-sub" id="bz-premium-active-sub">Enjoy all premium features</p>
+                <button type="button" id="bz-premium-active-done-btn" class="stg-action-btn stg-btn--green">
+                    Continue</button>
+            </div>
+
+            <!-- VIEW: Verification failed -->
+            <div id="bz-premium-failed-view" class="bz-premium-view bz-premium-status-view" style="display:none;">
+                <div class="bz-premium-fail-icon"><i class="fas fa-times"></i></div>
+                <h3>Payment Failed</h3>
+                <p class="bz-premium-status-sub" id="bz-premium-failed-reason">We couldn't verify your payment
+                    screenshot. Please upload a proper screenshot and try again.</p>
+                <ul id="bz-premium-failed-checklist" class="bz-premium-failed-checklist" style="display:none;"></ul>
+                <p class="bz-premium-status-sub" id="bz-premium-failed-instruction" style="display:none;"></p>
+                <button type="button" id="bz-premium-try-again-btn" class="stg-action-btn stg-btn--blue">Try
+                    Again</button>
+            </div>
+
+        </section>
+
+        <section id="settings-container" class="settings-container" style="display: none;">
+
+            <!-- Auth notice banner (shown when not signed in) -->
+            <div id="bz-auth-notice" style="display:none;">
+                <div class="bz-auth-notice-inner">
+                    <div class="bz-auth-notice-icon"><i class="fas fa-lock"></i></div>
+                    <div class="bz-auth-notice-text">
+                        <h4>Sign in to Access Beat Zen</h4>
+                        <p>Create a free account or sign in to browse music, build playlists, and sync across all your
+                            devices.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account card moved to the Profile page -->
+            <div class="stg-section" id="stg-account-section" style="display:none;">
+                <div class="stg-section-label"><i class="fas fa-user-circle"></i> Account</div>
+
+                <div id="bz-auth-signedout" class="bz-auth-card" style="display:none;">
+
+                    <!-- Card header -->
+                    <div class="bz-auth-card-icon"><i class="fas fa-user-circle"></i></div>
+                    <div class="bz-auth-card-text">
+                        <h4>Sign In to Beat Zen</h4>
+                        <p>Create a free account or sign in to browse music, build playlists, and sync across all your
+                            devices.</p>
+                    </div>
+
+                    <!-- Auth buttons — single row -->
+                    <div class="bz-email-auth-btns">
+                        <button id="bz-show-signup-btn" class="bz-email-auth-toggle-btn">
+                            <i class="fas fa-user-plus"></i> Sign Up
+                        </button>
+                        <button id="bz-show-signin-btn"
+                            class="bz-email-auth-toggle-btn bz-email-auth-toggle-btn--secondary">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+                    </div>
+
+                    <!-- ── Sign Up Form ── -->
+                    <div id="bz-email-signup-form" class="bz-email-form" style="display:none;">
+                        <div class="bz-email-form-header">
+                            <button id="bz-signup-back-btn" class="bz-form-back-btn" aria-label="Back">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <span>Create Account</span>
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signup-fullname">
+                                <i class="fas fa-user"></i> Full Name
+                            </label>
+                            <input id="bz-signup-fullname" class="bz-field-input" type="text"
+                                placeholder="Your full name" autocomplete="name" spellcheck="false" />
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signup-email">
+                                <i class="fas fa-envelope"></i> Email Address
+                            </label>
+                            <input id="bz-signup-email" class="bz-field-input" type="email"
+                                placeholder="yourname@gmail.com" autocomplete="email" spellcheck="false" />
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signup-password">
+                                <i class="fas fa-lock"></i> Password
+                            </label>
+                            <div class="bz-field-pw-wrap">
+                                <input id="bz-signup-password" class="bz-field-input" type="password"
+                                    placeholder="Min 6 characters" autocomplete="new-password" />
+                                <button type="button" class="bz-pw-toggle"
+                                    onclick="bzTogglePw('bz-signup-password',this)" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signup-confirm">
+                                <i class="fas fa-lock"></i> Confirm Password
+                            </label>
+                            <div class="bz-field-pw-wrap">
+                                <input id="bz-signup-confirm" class="bz-field-input" type="password"
+                                    placeholder="Repeat password" autocomplete="new-password" />
+                                <button type="button" class="bz-pw-toggle"
+                                    onclick="bzTogglePw('bz-signup-confirm',this)" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="bz-signup-error" class="bz-form-error" style="display:none;"></div>
+
+                        <button id="bz-signup-submit-btn" class="bz-form-submit-btn">
+                            <i class="fas fa-user-plus"></i> Create Account
+                        </button>
+
+                        <p class="bz-form-switch-text">
+                            Already have an account?
+                            <button type="button" class="bz-form-link-btn"
+                                onclick="document.getElementById('bz-show-signin-btn').click()">Sign in</button>
+                        </p>
+                    </div><!-- end signup form -->
+
+                    <!-- ── Sign In Form ── -->
+                    <div id="bz-email-signin-form" class="bz-email-form" style="display:none;">
+                        <div class="bz-email-form-header">
+                            <button id="bz-signin-back-btn" class="bz-form-back-btn" aria-label="Back">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <span>Sign In</span>
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signin-email">
+                                <i class="fas fa-envelope"></i> Email Address
+                            </label>
+                            <input id="bz-signin-email" class="bz-field-input" type="email"
+                                placeholder="yourname@gmail.com" autocomplete="email" spellcheck="false" />
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signin-password">
+                                <i class="fas fa-lock"></i> Password
+                            </label>
+                            <div class="bz-field-pw-wrap">
+                                <input id="bz-signin-password" class="bz-field-input" type="password"
+                                    placeholder="Your password" autocomplete="current-password" />
+                                <button type="button" class="bz-pw-toggle"
+                                    onclick="bzTogglePw('bz-signin-password',this)" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="bz-signin-error" class="bz-form-error" style="display:none;"></div>
+
+                        <div class="bz-forgot-link-row">
+                            <button type="button" id="bz-forgot-link-btn" class="bz-form-link-btn">
+                                <i class="fas fa-key"></i> Forgot password?
+                            </button>
+                        </div>
+
+                        <button id="bz-signin-submit-btn" class="bz-form-submit-btn">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+
+                        <p class="bz-form-switch-text">
+                            Don't have an account?
+                            <button type="button" class="bz-form-link-btn"
+                                onclick="document.getElementById('bz-show-signup-btn').click()">Sign up</button>
+                        </p>
+                    </div><!-- end signin form -->
+
+                    <!-- ── Forgot Password Form ── -->
+                    <div id="bz-forgot-password-form" class="bz-email-form" style="display:none;">
+
+                        <!-- Step 1: Enter email -->
+                        <div id="bz-forgot-step-input">
+                            <div class="bz-email-form-header">
+                                <button id="bz-forgot-back-btn" class="bz-form-back-btn" aria-label="Back">
+                                    <i class="fas fa-arrow-left"></i>
+                                </button>
+                                <span>Reset Password</span>
+                            </div>
+
+                            <p>Enter the email address you registered with. We'll send a reset link to your inbox. <span
+                                    class="bz-text-muted-inline">Check your spam folder if you don't see it.</span></p>
+
+                            <div class="bz-field-wrap">
+                                <label class="bz-field-label" for="bz-forgot-email">
+                                    <i class="fas fa-envelope"></i> Email Address
+                                </label>
+                                <input id="bz-forgot-email" class="bz-field-input" type="email"
+                                    placeholder="yourname@gmail.com" autocomplete="email" spellcheck="false" />
+                            </div>
+
+                            <div id="bz-forgot-error" class="bz-form-error" style="display:none;"></div>
+
+                            <button id="bz-forgot-submit-btn" class="bz-form-submit-btn">
+                                <i class="fas fa-paper-plane"></i> Send Reset Link
+                            </button>
+
+                            <p class="bz-form-switch-text">
+                                Remembered it?
+                                <button type="button" class="bz-form-link-btn"
+                                    onclick="document.getElementById('bz-show-signin-btn').click()">Sign in</button>
+                            </p>
+                        </div>
+
+                        <!-- Step 2: Email sent -->
+                        <div id="bz-forgot-step-sent" class="bz-hidden">
+                            <div class="bz-step-icon bz-step-icon--purple">
+                                <i class="fas fa-envelope-open-text"></i>
+                            </div>
+                            <h3>Check Your Inbox</h3>
+                            <p>A reset link has been sent to your email address. <span
+                                    class="bz-text-muted-inline">Check your spam folder if you don't see it.</span></p>
+                            <p class="bz-text-dim-sm">
+                                Click the link in the email — after resetting, click <strong
+                                    class="bz-text-subtle-strong">Back to Sign In</strong> to sign in with your
+                                new password.
+                            </p>
+                            <button type="button" class="bz-form-submit-btn" id="bz-forgot-goto-signin"
+                                class="bz-btn--purple-gradient">
+                                <i class="fas fa-sign-in-alt"></i> Back to Sign In
+                            </button>
+                        </div>
+
+                        <!-- Step 3: Set new password -->
+                        <div id="bz-forgot-step-reset" class="bz-hidden">
+                            <div class="bz-email-form-header">
+                                <span>Set New Password</span>
+                            </div>
+
+                            <p>Enter a new password for your BeatZen account.</p>
+
+                            <div class="bz-field-wrap">
+                                <label class="bz-field-label" for="bz-reset-password">
+                                    <i class="fas fa-lock"></i> New Password
+                                </label>
+                                <input id="bz-reset-password" class="bz-field-input" type="password"
+                                    placeholder="At least 6 characters" autocomplete="new-password" />
+                            </div>
+
+                            <div class="bz-field-wrap">
+                                <label class="bz-field-label" for="bz-reset-password-confirm">
+                                    <i class="fas fa-lock"></i> Confirm Password
+                                </label>
+                                <input id="bz-reset-password-confirm" class="bz-field-input" type="password"
+                                    placeholder="Repeat new password" autocomplete="new-password" />
+                            </div>
+
+                            <div id="bz-reset-error" class="bz-form-error" style="display:none;"></div>
+
+                            <button id="bz-reset-submit-btn" class="bz-form-submit-btn">
+                                <i class="fas fa-key"></i> Set New Password
+                            </button>
+                        </div>
+
+                        <!-- Step 4: Success -->
+                        <div id="bz-forgot-step-done" class="bz-hidden">
+                            <div class="bz-step-icon bz-step-icon--success">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <h3>Password Changed Successfully</h3>
+                            <p>
+                                Use your <strong class="bz-text-accent-purple">new password</strong> to sign in to
+                                BeatZen.
+                            </p>
+                            <button type="button" class="bz-form-submit-btn" id="bz-forgot-done-signin-btn"
+                                class="bz-btn--success-gradient">
+                                <i class="fas fa-sign-in-alt"></i> Go to Sign In
+                            </button>
+                        </div>
+
+                    </div><!-- end forgot password form -->
+
+                </div><!-- end bz-auth-signedout -->
+
+                <div id="bz-auth-signedin" class="bz-auth-card bz-auth-card--in">
+
+                    <div class="bz-auth-header-row">
+
+                        <img id="bz-auth-avatar" class="bz-auth-avatar" src="" alt="Profile">
+
+                        <div class="bz-auth-user-info">
+                            <div id="bz-auth-name" class="bz-auth-name"></div>
+                            <div id="bz-auth-email" class="bz-auth-email"></div>
+                            <div class="bz-auth-sync-status">
+                                <span id="bz-sync-status-text"></span>
+                            </div>
+                        </div>
+
+                        <button id="bz-google-signout-btn" class="stg-action-btn stg-btn--danger">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                        </button>
+                    </div>
+
+                </div><!-- end bz-auth-signedin -->
+
+            </div><!-- end stg-account-section -->
+
+            <!-- Wrapper still toggled by JS via #bz-sync-section -->
+            <div id="bz-sync-section" style="display:none;">
+
+                <!-- Settings content — hidden until signed in -->
+                <div id="bz-settings-locked" style="display:none;">
+
+                    <div class="stg-section">
+                        <div class="stg-section-label"><i class="fas fa-sliders-h"></i> Preferences</div>
+                        <div class="setting-item">
+                            <div class="stg-icon-wrap stg-icon--purple"><i class="fas fa-moon"></i></div>
+                            <div class="setting-text">
+                                <h4>Dark Mode</h4>
+                                <p>Full black &amp; white theme</p>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="dark-mode-toggle"><span
+                                    class="slider"></span></label>
+                        </div>
+                        <!-- Scheduled Dark Mode — unified card -->
+                        <div class="setting-item sdm-setting-item" id="schedule-dm-toggle-row">
+                            <div class="stg-icon-wrap stg-icon--purple"><i class="fas fa-clock"></i></div>
+                            <div class="setting-text">
+                                <h4>Scheduled Dark Mode</h4>
+                                <p id="schedule-dm-status-text">Auto-enable dark mode on a schedule</p>
+                                <!-- Active pill: merges "Schedule is active" label + time range, 50% width -->
+                                <span id="sdm-active-pill" style="display:none;
+                                align-items:center;gap:6px;margin-top:5px;
+                                max-width:50%;
+                                font-size:0.71rem;font-weight:700;letter-spacing:0.02em;
+                                background:linear-gradient(135deg,#7c3aed,#4f46e5);
+                                color:#fff;padding:4px 10px;border-radius:20px;
+                                box-shadow:0 2px 8px rgba(124,58,237,0.45);
+                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    <i class="fas fa-circle"
+                                        style="font-size:0.42rem;color:#a5f3fc;flex-shrink:0;animation:sdm-blink 1.4s ease-in-out infinite;"></i>
+                                    <span style="flex-shrink:0;opacity:0.78;font-weight:600;font-size:0.68rem;">Schedule
+                                        is
+                                        active</span>
+                                    <span style="flex-shrink:0;opacity:0.45;font-size:0.62rem;">·</span>
+                                    <span id="sdm-active-pill-text"
+                                        style="flex-shrink:1;overflow:hidden;text-overflow:ellipsis;">Daily · 12:00 AM –
+                                        6:00 AM</span>
+                                </span>
+                            </div>
+                            <!-- Collapse / Expand btn with helper label so user knows it controls -->
+                            <button class="sdm-collapse-btn sdm-collapse-btn--hidden" id="sdm-collapse-btn"
+                                aria-label="Toggle schedule controls">
+                                <i class="fas fa-chevron-up"></i>
+                                <span class="sdm-collapse-label" id="sdm-collapse-label">Edit</span>
+                            </button>
+                            <label class="switch"><input type="checkbox" id="schedule-dm-toggle"><span
+                                    class="slider"></span></label>
+                        </div>
+
+                        <!-- Schedule Panel (hidden until toggle is on) -->
+                        <div id="schedule-dm-panel" class="schedule-dm-panel" style="display:none;">
+
+                            <!-- Collapsible body (no separate header) -->
+                            <div class="sdm-panel-body" id="sdm-panel-body">
+
+                                <!-- Day selector -->
+                                <div class="schedule-dm-row">
+                                    <span class="schedule-dm-label"><i class="fas fa-calendar-days"></i> Days</span>
+                                    <div class="schedule-day-chips" id="schedule-day-chips">
+                                        <button class="sdm-day-chip sdm-day-all" data-day="daily">Daily</button>
+                                        <button class="sdm-day-chip" data-day="1">Mon</button>
+                                        <button class="sdm-day-chip" data-day="2">Tue</button>
+                                        <button class="sdm-day-chip" data-day="3">Wed</button>
+                                        <button class="sdm-day-chip" data-day="4">Thu</button>
+                                        <button class="sdm-day-chip" data-day="5">Fri</button>
+                                        <button class="sdm-day-chip" data-day="6">Sat</button>
+                                        <button class="sdm-day-chip" data-day="0">Sun</button>
+                                    </div>
+                                </div>
+
+                                <!-- Time pickers — manual inputs -->
+                                <div class="schedule-dm-times">
+                                    <!-- Turn ON time -->
+                                    <div class="schedule-dm-time-block">
+                                        <span class="schedule-dm-time-label"><i class="fas fa-moon"></i> Turn On</span>
+                                        <div class="sdm-manual-inputs" id="sdm-on-wheels">
+                                            <input class="sdm-time-input" id="sdm-on-hr-input" type="text"
+                                                inputmode="numeric" maxlength="2" placeholder="12"
+                                                aria-label="Turn on hour">
+                                            <span class="sdm-manual-colon">:</span>
+                                            <input class="sdm-time-input" id="sdm-on-min-input" type="text"
+                                                inputmode="numeric" maxlength="2" placeholder="00"
+                                                aria-label="Turn on minute">
+                                            <button class="sdm-ampm-toggle" id="sdm-on-ampm-btn"
+                                                aria-label="Toggle AM/PM">AM</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="schedule-dm-arrow"><i class="fas fa-arrow-right"></i></div>
+
+                                    <!-- Turn OFF time -->
+                                    <div class="schedule-dm-time-block">
+                                        <span class="schedule-dm-time-label"><i class="fas fa-sun"></i> Turn Off</span>
+                                        <div class="sdm-manual-inputs" id="sdm-off-wheels">
+                                            <input class="sdm-time-input" id="sdm-off-hr-input" type="text"
+                                                inputmode="numeric" maxlength="2" placeholder="07"
+                                                aria-label="Turn off hour">
+                                            <span class="sdm-manual-colon">:</span>
+                                            <input class="sdm-time-input" id="sdm-off-min-input" type="text"
+                                                inputmode="numeric" maxlength="2" placeholder="00"
+                                                aria-label="Turn off minute">
+                                            <button class="sdm-ampm-toggle" id="sdm-off-ampm-btn"
+                                                aria-label="Toggle AM/PM">AM</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Active status badge -->
+                                <div class="schedule-dm-active-badge" id="schedule-dm-active-badge"
+                                    style="display:none;">
+                                    <i class="fas fa-circle-check"></i> <span id="schedule-dm-badge-text">Dark mode
+                                        active
+                                        via schedule</span>
+                                </div>
+
+                                <!-- Set Schedule button -->
+                                <button id="sdm-set-schedule-btn" class="sdm-set-schedule-btn">
+                                    <i class="fas fa-calendar-check"></i> Set Schedule
+                                </button>
+
+                            </div><!-- /sdm-panel-body -->
+                        </div>
+                        <!-- /Scheduled Dark Mode -->
+
+                        <div class="setting-item">
+                            <div class="stg-icon-wrap stg-icon--blue"><i class="fas fa-history"></i></div>
+                            <div class="setting-text">
+                                <h4>Play History</h4>
+                                <p>Show Listen Again section in Playlists</p>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="history-toggle"><span
+                                    class="slider"></span></label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="stg-icon-wrap stg-icon--pink"><i class="fas fa-wand-magic-sparkles"></i></div>
+                            <div class="setting-text">
+                                <h4>Auto Mix</h4>
+                                <p>Auto-fills your queue with songs based on listening signals</p>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="automix-toggle"><span
+                                    class="slider"></span></label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="stg-icon-wrap stg-icon--teal"><i class="fas fa-keyboard"></i></div>
+                            <div class="setting-text">
+                                <h4>Keyboard Shortcuts</h4>
+                                <p>Enable hotkeys for playback control</p>
+                            </div>
+                            <div class="bz-shortcuts-row">
+                                <button id="view-shortcuts-btn" style="display:none;"><i class="fas fa-list"></i>
+                                    View</button>
+                                <label class="switch"><input type="checkbox" id="shortcuts-toggle"><span
+                                        class="slider"></span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><i class="fas fa-database"></i> Data &amp; Privacy</div>
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--orange"><i class="fas fa-clock-rotate-left"></i></div>
+                        <div class="setting-text">
+                            <h4>Clear Play History</h4>
+                            <p>Clears Listen Again section in Playlists</p>
+                        </div>
+                        <button id="clear-history-btn" class="stg-action-btn stg-btn--danger"><i
+                                class="fas fa-trash-alt"></i> Clear</button>
+                    </div>
+
+                    <!-- C6 FIX: Recent Searches toggle -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--blue"><i class="fas fa-clock-rotate-left"></i></div>
+                        <div class="setting-text">
+                            <h4>Recent Searches</h4>
+                            <p>Show your recent search queries in the search bar</p>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="recent-searches-toggle"><span
+                                class="slider"></span></label>
+                    </div>
+
+                    <!-- C1 FIX: Export Data button -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--green"><i class="fas fa-file-export"></i></div>
+                        <div class="setting-text">
+                            <h4>Export Data</h4>
+                            <p>Download a backup of your playlists, history &amp; settings</p>
+                        </div>
+                        <button id="export-data-btn" class="stg-action-btn stg-btn--green"><i
+                                class="fas fa-download"></i>
+                            Export</button>
+                    </div>
+
+                    <!-- C2 FIX: Import Data button + hidden file input -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--purple"><i class="fas fa-file-import"></i></div>
+                        <div class="setting-text">
+                            <h4>Import Data</h4>
+                            <p>Restore from a previously exported Beat Zen backup file</p>
+                        </div>
+                        <button id="import-data-btn" class="stg-action-btn stg-btn--blue"><i class="fas fa-upload"></i>
+                            Import</button>
+                        <input type="file" id="data-file-input" accept=".json" style="display:none;">
+                    </div>
+
+                    <!-- C3 FIX: Delete All Playlists + Restore — logic existed but no UI -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--orange"><i class="fas fa-list-ul"></i></div>
+                        <div class="setting-text">
+                            <h4>Delete All Playlists</h4>
+                            <p>Remove all your saved &amp; created playlists (restorable this session)</p>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-shrink:0;">
+                            <button id="restore-playlists-btn" class="stg-action-btn stg-btn--green"
+                                style="display:none;"><i class="fas fa-rotate-left"></i> Restore</button>
+                            <button id="delete-playlists-btn" class="stg-action-btn stg-btn--danger"><i
+                                    class="fas fa-trash-alt"></i> Delete All</button>
+                        </div>
+                    </div>
+
+                    <!-- C4 FIX: Remove Explore Playlists + Restore — logic existed but no UI -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--pink"><i class="fas fa-compact-disc"></i></div>
+                        <div class="setting-text">
+                            <h4>Remove Explore Playlists</h4>
+                            <p>Clear daily &amp; generated playlists from the Playlists tab (restorable this session)
+                            </p>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-shrink:0;">
+                            <button id="restore-explore-btn" class="stg-action-btn stg-btn--green"
+                                style="display:none;"><i class="fas fa-rotate-left"></i> Restore</button>
+                            <button id="remove-explore-btn" class="stg-action-btn stg-btn--danger"><i
+                                    class="fas fa-xmark"></i> Remove</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Install App setting ── -->
+                <div class="stg-section" id="bz-install-setting-section">
+                    <div class="stg-section-label"><i class="fas fa-mobile-alt"></i> App</div>
+
+                    <!-- Install row: swaps between an "Install" button and a plain "App -->
+                    <div class="setting-item" id="bz-install-setting-item">
+                        <div class="stg-icon-wrap stg-icon--blue" id="bz-install-setting-icon"><i
+                                class="fas fa-download"></i></div>
+                        <div class="setting-text">
+                            <h4 id="bz-install-setting-title">Install Beat Zen</h4>
+                            <p id="bz-install-setting-desc">Install the app for a faster, native experience</p>
+                        </div>
+                        <button id="bz-settings-install-btn" class="stg-action-btn stg-btn--blue">
+                            <i class="fas fa-plus"></i> Install
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><i class="fas fa-info-circle"></i> About &amp; Features</div>
+                    <div class="stg-about-card">
+
+                        <!-- Always-visible header row -->
+                        <div class="stg-about-header">
+                            <div class="stg-about-left">
+                                <div class="stg-about-icon-box">
+                                    <i class="fas fa-music"></i>
+                                </div>
+                                <div class="stg-about-text-block">
+                                    <div class="stg-about-name">Beat Zen</div>
+                                    <div class="stg-about-tagline">Premium Music Experience</div>
+                                </div>
+                            </div>
+                            <button class="stg-know-more-btn" id="know-more-btn" onclick="toggleAboutDetails()">
+                                <span id="know-more-label">Know More</span>
+                                <i class="fas fa-chevron-down" id="know-more-icon"></i>
+                            </button>
+                        </div>
+
+                        <!-- Collapsible content -->
+                        <div class="stg-about-details" id="about-details">
+                            <p class="stg-about-desc">
+                                <strong>Beat</strong> — the heart of every song we offer.
+                                <strong>Zen</strong> — the simplicity and focus of everything we build.
+                                Crafted with pure web technology for a smooth, distraction-free listening experience on
+                                every device.
+                            </p>
+                            <div class="stg-features-label">What makes Beat Zen different</div>
+                            <div class="stg-features-grid">
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-calendar-alt"></i><span>Yearly Browse Albums</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-moon"></i><span>Sleep Timer</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-share-nodes"></i><span>Shareable Song Cards</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-wand-magic-sparkles"></i><span>Made For You Recommendations</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-clock"></i><span>Scheduled Dark Mode</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-infinity"></i><span>Beat Zen Universe (Year wise Playlists)</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-keyboard"></i><span>Keyboard Shortcuts</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-envelope"></i><span>Song Requests &amp; Feedback</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><i class="fas fa-envelope"></i> Get in Touch</div>
+                    <div class="stg-contact-card">
+                        <!-- Header row matching About & Features style -->
+                        <div class="stg-about-header">
+                            <div class="stg-about-left">
+                                <div class="stg-about-icon-box"
+                                    style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 3px 10px rgba(245,158,11,0.35);">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div class="stg-about-text-block">
+                                    <div class="stg-about-name">Have any queries, song requests, or want to share
+                                        feedback?</div>
+                                    <div class="stg-about-tagline">We Would Love to Hear From You</div>
+                                </div>
+                            </div>
+                            <button class="stg-know-more-btn" id="contact-us-btn" onclick="toggleContactDetails()">
+                                <span id="contact-us-label">Contact Us</span>
+                                <i class="fas fa-chevron-down" id="contact-us-icon"></i>
+                            </button>
+                        </div>
+
+                        <!-- Collapsible contact content -->
+                        <div class="stg-about-details stg-contact-details" id="contact-details">
+                            <form id="contact-form" class="contact-form" action="https://formspree.io/f/mqezdgly"
+                                method="POST">
+                                <label for="contact-name">Full Name <span class="stg-required">*</span></label>
+                                <input type="text" name="name" id="contact-name" placeholder="Enter your name" required>
+                                <label for="contact-email">Email Address <span class="stg-required">*</span></label>
+                                <input type="email" name="email" id="contact-email"
+                                    placeholder="Enter valid email for replies" required>
+                                <label for="contact-mobile">Mobile Number <span
+                                        class="stg-optional">(Optional)</span></label>
+                                <input type="tel" name="mobile" id="contact-mobile"
+                                    placeholder="Enter no. for quick response">
+                                <label for="contact-message">Message <span class="stg-required">*</span></label>
+                                <textarea name="message" id="contact-message" rows="5"
+                                    placeholder="How can we help you?" required></textarea>
+                                <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Send
+                                    Message</button>
+                            </form>
+                        </div><!-- end stg-contact-details collapsible -->
+                    </div>
+                </div><!-- end Contact stg-section -->
+            </div><!-- end bz-settings-locked -->
+        </section>
+
+        <!-- Profile page -->
+        <section id="profile-container" class="profile-container" style="display:none;">
+            <div class="bz-profile-page-nav-bar">
+                <button class="bz-back-btn bz-profile-page-back-btn" id="bz-profile-back-btn" aria-label="Go back">
+                    <i class="fas fa-arrow-left"></i><span class="bz-back-label">Back</span>
+                </button>
+            </div>
+
+            <div class="bz-profile-page-card">
+                <div class="bz-profile-page-avatar-wrap">
+                    <img id="bz-profile-page-avatar" class="bz-profile-page-avatar" src="" alt="" style="display:none;">
+                    <div id="bz-profile-page-avatar-init" class="bz-profile-page-avatar-init" style="display:none;">
+                    </div>
+                </div>
+
+                <div id="bz-profile-page-name" class="bz-profile-page-name">Beat Zen User</div>
+                <div id="bz-profile-page-email" class="bz-profile-page-email"></div>
+
+                <div class="bz-profile-page-joined">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="bz-profile-page-joined-text">—</span>
+                </div>
+            </div>
+
+            <!-- Daily open streak -->
+            <div class="bz-profile-streak-card" id="bz-profile-streak-card">
+                <div class="bz-streak-flame"><i class="fas fa-fire"></i></div>
+                <div class="bz-streak-text">
+                    <span class="bz-streak-heading">Day Streak</span>
+                    <span class="bz-streak-count" id="bz-profile-streak-count">0</span>
+                </div>
+                <button class="bz-streak-share-btn" id="bz-streak-share-btn" title="Share Streak"
+                    aria-label="Share Streak">
+                    <i class="fas fa-share-nodes"></i>
+                </button>
+            </div>
+
+            <!-- Account actions -->
+            <div class="bz-profile-actions">
+                <div id="bz-profile-admin-entry-container"></div>
+                <button id="bz-profile-signout-btn" class="stg-action-btn stg-btn--danger bz-profile-signout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Sign Out
+                </button>
+            </div>
+        </section>
+
+        <section id="album-view-container" class="album-view-container" style="display:none;">
+            <div id="album-main-content" class="album-main-content"></div>
+        </section>
+    </main>
+
+    <audio id="audio-player" src="" preload="none"></audio>
+
+    <div class="player" id="main-player" role="region" aria-label="Music Player Controls"
+        style="transform:translateY(110%);pointer-events:none;">
+        <button id="minimize-btn" class="minimize-btn" title="Minimize" aria-label="Exit Fullscreen"><i
+                class="fas fa-chevron-down"></i></button>
+
+        <button id="fs-lyrics-btn" class="fs-lyrics-btn" title="Lyrics" aria-label="Show Lyrics"><i
+                class="fas fa-align-left"></i></button>
+        <button id="fs-share-btn" class="fs-share-btn" title="Share" aria-label="Share Song"><i
+                class="fas fa-share-nodes"></i></button>
+        <button id="fs-menu-btn" class="fs-menu-btn" title="More Options" aria-label="More Options"><i
+                class="fas fa-ellipsis-v"></i></button>
+        <div id="fs-menu-dropdown" class="fs-menu-dropdown" role="menu" aria-hidden="true">
+            <button id="fs-goto-album-btn" class="fs-menu-item" role="menuitem"><i
+                    class="fas fa-compact-disc"></i><span>Go to Album</span></button>
+            <button id="fs-goto-playlist-btn" class="fs-menu-item" role="menuitem" style="display:none;"><i
+                    class="fas fa-list-ul"></i><span>Go to Playlist</span></button>
+        </div>
+
+        <div class="player-content">
+            <div class="player-left" aria-label="Song Details">
+                <div class="player-album-container">
+                    <div id="player-header-stack" class="player-header-stack">
+                        <div id="header-playing-from" class="header-label"></div>
+                        <div id="header-movie-name" class="header-movie"></div>
+                    </div>
+                    <img id="player-album-cover" class="player-album-cover"
+                        src="https://res.cloudinary.com/beatzenapp/image/upload/v1782654641/Logo_kmpfjf.jpg"
+                        alt="Current Album Artwork" loading="eager">
+                </div>
+                <div class="player-info">
+                    <div id="player-song-title" class="song-title">Select a song to play</div>
+                    <div id="player-song-artist" class="song-artist"></div>
+                </div>
+            </div>
+
+            <div class="player-middle">
+                <div class="player-controls-top">
+                    <button id="shuffle-btn" title="Shuffle" aria-label="Toggle Shuffle Mode"><i
+                            class="fas fa-random"></i></button>
+                    <button id="prev-btn" title="Previous" aria-label="Play Previous Song"><i
+                            class="fas fa-step-backward"></i></button>
+                    <button id="play-pause-btn" title="Play/Pause" aria-label="Toggle Play and Pause"><i
+                            class="fas fa-play"></i></button>
+                    <button id="next-btn" title="Next" aria-label="Play Next Song"><i
+                            class="fas fa-step-forward"></i></button>
+                    <button id="loop-btn" title="Repeat" aria-label="Toggle Repeat Mode"><i
+                            class="fas fa-repeat"></i></button>
+                </div>
+            </div>
+            <div class="player-right">
+                <div class="timer-btn-container">
+                    <button id="timer-btn" title="Sleep Timer" aria-label="Open Sleep Timer"><i
+                            class="fas fa-moon"></i></button>
+                </div>
+                <button id="bz-queue-open-btn" title="Queue" aria-label="Open Playback Queue"><i
+                        class="fas fa-list-ul"></i></button>
+                <button id="mini-play-pause-btn" class="mini-play-pause-btn" title="Play/Pause"
+                    aria-label="Toggle Play and Pause"><i class="fas fa-play"></i></button>
+                <button id="maximize-btn" title="Full Screen" aria-label="Maximize Player"><i
+                        class="fas fa-expand"></i></button>
+            </div>
+        </div>
+
+        <div class="progress-container" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <span id="current-time">0:00</span>
+            <div id="progress-bar" class="progress-bar" aria-label="Music Progress Slider">
+                <div id="progress" class="progress"></div>
+            </div>
+            <span id="duration">0:00</span>
+        </div>
+    </div>
+
+    <div id="delete-confirm-popup" class="timer-popup" style="display: none;">
+        <div class="timer-popup-content">
+            <h3>Delete Playlist?</h3>
+            <p>Are you sure you want to remove this imported playlist? This action cannot be undone.</p>
+            <div class="bz-popup-btn-group">
+                <button id="confirm-delete-btn">Delete</button>
+                <button id="cancel-delete-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="timer-popup" class="timer-popup" aria-hidden="true">
+        <div class="timer-popup-content">
+            <button id="close-timer-popup" class="close-popup-btn" aria-label="Close Timer Menu"><i
+                    class="fas fa-times"></i></button>
+
+            <!-- Stars decoration layer -->
+            <div class="bz-timer-stars" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+
+            <!-- Header -->
+            <div class="bz-timer-header">
+                <div class="bz-timer-moon-wrap">
+                    <i class="fas fa-moon bz-timer-moon-icon"></i>
+                    <div class="bz-timer-moon-glow"></div>
+                </div>
+                <h3>Set Sleep Timer</h3>
+                <p id="bz-timer-sub" class="bz-timer-subtitle">Choose your sleep duration</p>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="bz-timer-presets">
+                <button class="bz-preset-btn" data-seconds="900" aria-label="15 minutes">
+                    <span class="bz-preset-num">15</span><span class="bz-preset-unit">min</span>
+                </button>
+                <button class="bz-preset-btn" data-seconds="1800" aria-label="30 minutes">
+                    <span class="bz-preset-num">30</span><span class="bz-preset-unit">min</span>
+                </button>
+                <button class="bz-preset-btn" data-seconds="2700" aria-label="45 minutes">
+                    <span class="bz-preset-num">45</span><span class="bz-preset-unit">min</span>
+                </button>
+                <button class="bz-preset-btn" data-seconds="3600" aria-label="60 minutes">
+                    <span class="bz-preset-num">60</span><span class="bz-preset-unit">min</span>
+                </button>
+            </div>
+
+            <!-- Confirmation panel — shown after a preset is tapped -->
+            <div id="bz-preset-confirm" class="bz-preset-confirm" style="display:none;">
+                <div class="bz-confirm-icon">
+                    <i class="fas fa-moon"></i>
+                    <div class="bz-confirm-icon-ring"></div>
+                </div>
+                <p class="bz-confirm-label">Falling asleep in</p>
+                <p class="bz-confirm-duration" id="bz-confirm-duration">30 minutes</p>
+                <div class="bz-confirm-actions">
+                    <button id="bz-confirm-start-btn" class="bz-confirm-start">
+                        <i class="fas fa-moon"></i> Start Timer
+                    </button>
+                    <button id="bz-confirm-back-btn" class="bz-confirm-back">
+                        <i class="fas fa-arrow-left"></i> Go Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- OR divider + Choose Manually -->
+            <div id="bz-timer-or-section" class="bz-timer-or-section">
+                <div class="bz-timer-divider"><span>OR</span></div>
+                <p class="bz-choose-manual-label"><i class="fas fa-keyboard"></i> Enter Manually</p>
+            </div>
+
+            <!-- Manual Input (Hours & Minutes) -->
+            <div class="timer-columns-container">
+                <div class="column-wrapper">
+                    <span class="column-label">Hours</span>
+                    <div class="bz-time-input-wrap">
+                        <input id="timer-input-hours" class="bz-time-input" type="number" min="0" max="24"
+                            placeholder="00" inputmode="numeric" autocomplete="off" aria-label="Hours" />
+                    </div>
+                </div>
+                <div class="bz-wheel-sep">:</div>
+                <div class="column-wrapper">
+                    <span class="column-label">Mins</span>
+                    <div class="bz-time-input-wrap">
+                        <input id="timer-input-mins" class="bz-time-input" type="number" min="0" max="60"
+                            placeholder="00" inputmode="numeric" autocomplete="off" aria-label="Minutes" />
+                    </div>
+                </div>
+            </div>
+            <!-- Inline validation hint -->
+            <div id="bz-timer-input-hint" class="bz-timer-input-hint" aria-live="polite" style="display:none;"></div>
+
+            <!-- Running Countdown Display -->
+            <div class="timer-display-container">
+                <span id="timer-display"></span>
+                <div class="bz-timer-display-glow"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div id="timer-buttons" class="timer-buttons">
+                <button id="start-timer-btn" aria-label="Start Timer">
+                    <i class="fas fa-moon"></i> Start Sleep Timer
+                </button>
+                <button id="cancel-timer-btn" style="display: none;" aria-label="Cancel Timer">
+                    <i class="fas fa-times-circle"></i> Cancel Timer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="success-popup" class="success-popup" style="display: none;" aria-live="polite">
+        <div class="bz-success-icon"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
+        <p>Your message has been submitted successfully.</p>
+        <button id="close-success-popup" aria-label="Close Success Message">OK</button>
+    </div>
+
+    <div id="timer-ended-popup" class="timer-ended-popup" aria-live="assertive">
+        <div class="bz-ended-icon-wrap">
+            <i class="fas fa-moon bz-ended-moon"></i>
+            <div class="bz-ended-rings">
+                <div class="bz-ended-ring bz-ended-ring--1"></div>
+                <div class="bz-ended-ring bz-ended-ring--2"></div>
+            </div>
+        </div>
+        <h3>Sleep Well</h3>
+        <p>Your music has faded into the night.</p>
+        <button id="close-timer-ended" aria-label="Close Timer Alert">
+            <i class="fas fa-check"></i> Got it
+        </button>
+    </div>
+
+    <div id="playlist-modal" class="timer-popup bz-modal--top" style="display: none;">
+        <div class="timer-popup-content">
+            <button id="close-playlist-modal" class="close-popup-btn" onclick="closePlaylistModal()"><i
+                    class="fas fa-times"></i></button>
+            <h3 id="modal-song-title">Select a Song</h3>
+            <div id="modal-main-options" class="timer-buttons">
+                <button id="modal-create-btn" onclick="showCreatePlaylistUI()"><i class="fas fa-plus"></i> Create New
+                    Playlist</button>
+                <button id="modal-add-to-btn" onclick="showAddToPlaylistUI()"><i class="fas fa-list"></i> Add to
+                    Existing Playlist</button>
+                <button id="modal-play-next-btn"><i class="fas fa-forward-step"></i> Play Next</button>
+                <button id="modal-add-end-btn"><i class="fas fa-list-ul"></i> Add to End of Queue</button>
+                <button id="modal-fav-btn" type="button"><i class="far fa-heart bz-fav-modal-icon"></i><span
+                        id="modal-fav-btn-label">Add to Favourites</span></button>
+                <button id="modal-remove-from-playlist-btn" style="display:none;"><i class="fas fa-trash-alt"></i>
+                    Remove from Playlist</button>
+                <button id="modal-remove-history-btn" style="display:none;"><i class="fas fa-trash-clock"></i> Remove
+                    from History</button>
+            </div>
+            <div id="modal-create-ui">
+                <input type="text" id="new-playlist-name" placeholder="Enter playlist name...">
+                <div class="timer-buttons">
+                    <button id="confirm-create-btn">Confirm</button>
+                    <button onclick="backToModalMain()">Cancel</button>
+                </div>
+            </div>
+            <div id="modal-list-ui">
+                <div id="existing-playlists-list"></div>
+                <button id="back-to-main-btn" onclick="backToModalMain()"><i class="fas fa-arrow-left"></i>
+                    Back</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bz-queue-fullscreen" class="bz-queue-overlay">
+        <div class="bz-queue-back-row">
+            <button class="bz-back-btn" id="bz-queue-back-btn" aria-label="Go back">
+                <i class="fas fa-arrow-left"></i><span class="bz-back-label">Back</span>
+            </button>
+        </div>
+        <div class="bz-queue-header">
+            <div class="bz-queue-title-group">
+                <h1>Playback Queue</h1>
+                <p id="bz-queue-stats">Loading…</p>
+            </div>
+            <div class="bz-queue-actions">
+                <button id="bz-queue-save" class="bz-btn bz-btn--save" title="Save queue as playlist"><i
+                        class="fas fa-floppy-disk"></i><span>Save</span></button>
+                <button id="bz-queue-clear" class="bz-btn danger" title="Clear queue"><i
+                        class="fas fa-trash"></i><span>Clear</span></button>
+                <!-- Close button hidden -->
+                <button id="bz-queue-close" class="bz-close-btn" title="Close" style="display:none"><i
+                        class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div class="bz-now-playing">
+            <span class="bz-label">Now Playing</span>
+            <div id="bz-queue-active-container"></div>
+        </div>
+        <div class="bz-queue-body">
+            <span class="bz-label">Up Next</span>
+            <div id="bz-queue-list" class="bz-queue-list"></div>
+            <div id="bz-empty-state" class="bz-empty">
+                <i class="fas fa-music"></i>
+                <p>No songs in queue</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="bz-lyrics-fullscreen" class="bz-queue-overlay bz-lyrics-overlay">
+        <div class="bz-lyrics-top-row">
+            <button class="bz-back-btn" id="bz-lyrics-back-btn" aria-label="Go back">
+                <i class="fas fa-arrow-left"></i><span class="bz-back-label">Back</span>
+            </button>
+            <h1 class="bz-lyrics-heading">Lyrics</h1>
+        </div>
+
+        <div class="bz-lyrics-layout">
+            <div class="bz-lyrics-body">
+                <p id="bz-lyrics-subtitle">Now Playing</p>
+                <div id="bz-lyrics-state" class="bz-lyrics-state">
+                    <span class="bz-lyrics-state-icon-wrap" aria-hidden="true">
+                        <i id="bz-lyrics-state-icon" class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <p id="bz-lyrics-state-text">Fetching lyrics…</p>
+                    <button id="bz-lyrics-retry-btn" class="bz-lyrics-retry-btn"><i class="fas fa-rotate-right"></i> Try
+                        Again</button>
+
+                    <!-- Community Lyrics Fallback -->
+                    <div id="bz-lyrics-community" class="bz-lyrics-community">
+                        <h3 class="bz-lyrics-community-heading"><i class="fa-brands fa-google" aria-hidden="true"></i>
+                            Search Lyrics on Google</h3>
+                        <div class="bz-lyrics-community-copy-row">
+                            <code id="bz-lyrics-community-query" class="bz-lyrics-community-query"></code>
+                            <button id="bz-lyrics-community-copy-btn" class="bz-lyrics-community-copy-btn"
+                                title="Copy search text" aria-label="Copy search text">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+
+                        <button id="bz-lyrics-add-btn" class="bz-lyrics-add-btn" type="button">
+                            <i class="fas fa-plus"></i> Add Lyrics
+                        </button>
+
+                        <div id="bz-lyrics-add-form" class="bz-lyrics-add-form">
+                            <textarea id="bz-lyrics-add-textarea" class="bz-lyrics-add-textarea" maxlength="8000"
+                                placeholder="Paste or type the lyrics here…"></textarea>
+                            <div class="bz-lyrics-add-form-actions">
+                                <span id="bz-lyrics-add-error" class="bz-lyrics-add-error"></span>
+                                <button id="bz-lyrics-add-cancel-btn" class="bz-lyrics-add-cancel-btn"
+                                    type="button">Cancel</button>
+                                <button id="bz-lyrics-add-save-btn" class="bz-lyrics-add-save-btn" type="button"><i
+                                        class="fas fa-check"></i> Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="bz-lyrics-content" class="bz-lyrics-content"></div>
+            </div>
+
+            <!-- Right-side "now playing" panel — desktop/large-screen only (see CSS). -->
+            <aside class="bz-lyrics-side" id="bz-lyrics-side" aria-label="Now playing">
+                <div class="bz-lyrics-side-cover-wrap">
+                    <div id="bz-lyrics-side-movie" class="bz-lyrics-side-movie"></div>
+                    <img id="bz-lyrics-side-cover" class="bz-lyrics-side-cover" src="" alt="Album Artwork">
+                </div>
+                <div class="bz-lyrics-side-info">
+                    <div id="bz-lyrics-side-title" class="bz-lyrics-side-title"></div>
+                    <div id="bz-lyrics-side-artist" class="bz-lyrics-side-artist"></div>
+                </div>
+                <!-- BUG FIX: these 4 ids used to duplicate the main player's ids -->
+                <div class="progress-container" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                    <span id="bz-lyrics-current-time">0:00</span>
+                    <div id="bz-lyrics-progress-bar" class="progress-bar" aria-label="Music Progress Slider">
+                        <div id="bz-lyrics-progress" class="progress"></div>
+                    </div>
+                    <span id="bz-lyrics-duration">0:00</span>
+                </div>
+                <div class="bz-lyrics-mini-player">
+                    <button id="bz-lyrics-prev-btn" class="bz-lyrics-mini-btn" title="Previous" aria-label="Previous"><i
+                            class="fas fa-step-backward"></i></button>
+                    <button id="bz-lyrics-pp-btn" class="bz-lyrics-mini-btn bz-lyrics-mini-btn--play" title="Play/Pause"
+                        aria-label="Play/Pause"><i class="fas fa-play"></i></button>
+                    <button id="bz-lyrics-next-btn" class="bz-lyrics-mini-btn" title="Next" aria-label="Next"><i
+                            class="fas fa-step-forward"></i></button>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="toast-container">
+    </div>
+
+    <!-- Auth Gate -->
+    <div id="bz-auth-gate" role="dialog" aria-modal="true" aria-label="Sign in required">
+        <div class="bz-gate-card" data-active-panel="bz-gate-landing">
+
+            <!-- Brand -->
+            <div class="bz-gate-brand">
+                <img src="https://res.cloudinary.com/beatzenapp/image/upload/v1782654641/Logo_kmpfjf.jpg"
+                    alt="Beat Zen">
+                <span class="bz-gate-brand-name">Beat Zen</span>
+            </div>
+
+            <!-- Default landing — shown until user picks Sign Up or Sign In -->
+            <div id="bz-gate-landing">
+
+                <!-- Top navigation: logo left, Sign Up / Sign In right -->
+                <div class="bz-gate-navbar">
+                    <div class="bz-gate-nav-brand">
+                        <img src="https://res.cloudinary.com/beatzenapp/image/upload/v1782654641/Logo_kmpfjf.jpg"
+                            alt="Beat Zen">
+                        <span class="bz-gate-brand-name">Beat Zen</span>
+                    </div>
+                    <div class="bz-gate-nav-actions">
+                        <button class="bz-gate-signup-btn" id="bz-gate-signup-btn">
+                            <i class="fas fa-user-plus"></i><span>Sign Up</span>
+                        </button>
+                        <button class="bz-gate-signin-btn" id="bz-gate-signin-btn">
+                            <i class="fas fa-sign-in-alt"></i><span>Sign In</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- /.bz-gate-navbar -->
+
+                <!-- Hero -->
+                <div class="bz-gate-hero">
+                    <div class="bz-gate-hero-badge">
+                        <i class="fas fa-gift"></i>
+                        <span>Limited offer — the first 100 active users get free access for 2 months</span>
+                    </div>
+                    <div class="bz-gate-hero-live" id="bz-gate-hero-live">
+                        <span class="bz-live-dot"></span>
+                        <span class="bz-live-label">LIVE</span>
+                        <span class="bz-live-count" id="bz-gate-live-count">—</span>
+                        <span class="bz-live-suffix">users left</span>
+                    </div>
+                </div>
+                <!-- /.bz-gate-hero -->
+
+                <!-- Feature showcase — 3×3 grid -->
+                <div class="bz-gate-features-section">
+
+                    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+                        <defs>
+                            <linearGradient id="bzGradPB" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#7c3aed" />
+                                <stop offset="100%" stop-color="#2575fc" />
+                            </linearGradient>
+                            <linearGradient id="bzGradBP" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#2575fc" />
+                                <stop offset="100%" stop-color="#7c3aed" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <div class="bz-gate-divider"><span>What makes Beat Zen different</span></div>
+
+                    <div class="bz-gate-features-grid">
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-calendar-alt"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Yearly Browse Albums</div>
+                                <div class="bz-gate-feature-desc">Explore albums organized by year</div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <rect x="8" y="12" width="50" height="18" rx="9" fill="#fff" fill-opacity="0.05"
+                                        stroke="#fff" stroke-opacity="0.15" />
+                                    <rect x="18" y="18" width="22" height="4" rx="2" fill="#fff" fill-opacity="0.35" />
+                                    <rect x="66" y="12" width="50" height="18" rx="9" fill="url(#bzGradPB)" />
+                                    <rect x="76" y="18" width="22" height="4" rx="2" fill="#fff" fill-opacity="0.9" />
+                                    <rect x="124" y="12" width="50" height="18" rx="9" fill="#fff" fill-opacity="0.05"
+                                        stroke="#fff" stroke-opacity="0.15" />
+                                    <rect x="134" y="18" width="22" height="4" rx="2" fill="#fff" fill-opacity="0.35" />
+                                    <rect x="182" y="12" width="50" height="18" rx="9" fill="#fff" fill-opacity="0.05"
+                                        stroke="#fff" stroke-opacity="0.15" />
+                                    <rect x="192" y="18" width="22" height="4" rx="2" fill="#fff" fill-opacity="0.35" />
+                                    <rect x="8" y="42" width="50" height="42" rx="8" fill="url(#bzGradPB)"
+                                        fill-opacity="0.85" />
+                                    <rect x="66" y="42" width="50" height="42" rx="8" fill="url(#bzGradBP)"
+                                        fill-opacity="0.55" />
+                                    <rect x="124" y="42" width="50" height="42" rx="8" fill="url(#bzGradBP)"
+                                        fill-opacity="0.85" />
+                                    <rect x="182" y="42" width="50" height="42" rx="8" fill="url(#bzGradPB)"
+                                        fill-opacity="0.55" />
+                                    <rect x="8" y="92" width="50" height="42" rx="8" fill="url(#bzGradBP)"
+                                        fill-opacity="0.6" />
+                                    <rect x="66" y="92" width="50" height="42" rx="8" fill="url(#bzGradPB)"
+                                        fill-opacity="0.9" />
+                                    <rect x="124" y="92" width="50" height="42" rx="8" fill="url(#bzGradPB)"
+                                        fill-opacity="0.5" />
+                                    <rect x="182" y="92" width="50" height="42" rx="8" fill="url(#bzGradBP)"
+                                        fill-opacity="0.8" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-moon"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Sleep Timer</div>
+                                <div class="bz-gate-feature-desc">Music that fades out as you drift off</div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <g stroke="#fff" stroke-opacity="0.22" stroke-width="2">
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(0 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(30 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(60 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(90 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(120 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(150 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(180 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(210 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(240 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(270 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(300 120 50)" />
+                                        <line x1="120" y1="6" x2="120" y2="11" transform="rotate(330 120 50)" />
+                                    </g>
+                                    <circle cx="120" cy="50" r="34" fill="none" stroke="#fff" stroke-opacity="0.12"
+                                        stroke-width="7" />
+                                    <circle cx="120" cy="50" r="34" fill="none" stroke="url(#bzGradPB)" stroke-width="7"
+                                        stroke-linecap="round" stroke-dasharray="128 999"
+                                        transform="rotate(-90 120 50)" />
+                                    <path fill="#c4b5fd" fill-rule="evenodd"
+                                        d="M120,50 m-13,0 a13,13 0 1,0 26,0 a13,13 0 1,0 -26,0 Z M128,46 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0 Z" />
+                                    <path d="M92,26 l2,5 l5,2 l-5,2 l-2,5 l-2,-5 l-5,-2 l5,-2 Z" fill="#fff"
+                                        fill-opacity="0.85" />
+                                    <path
+                                        d="M150,30 l1.4,3.4 l3.4,1.4 l-3.4,1.4 l-1.4,3.4 l-1.4,-3.4 l-3.4,-1.4 l3.4,-1.4 Z"
+                                        fill="#fff" fill-opacity="0.6" />
+                                    <rect x="68" y="106" width="10" height="24" rx="5" fill="#7c3aed"
+                                        fill-opacity="0.9" />
+                                    <rect x="91" y="112" width="10" height="18" rx="5" fill="#7c3aed"
+                                        fill-opacity="0.65" />
+                                    <rect x="114" y="117" width="10" height="13" rx="5" fill="#2575fc"
+                                        fill-opacity="0.5" />
+                                    <rect x="137" y="121" width="10" height="9" rx="4.5" fill="#2575fc"
+                                        fill-opacity="0.32" />
+                                    <rect x="160" y="124" width="10" height="6" rx="3" fill="#2575fc"
+                                        fill-opacity="0.18" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-share-nodes"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Shareable Song Cards</div>
+                                <div class="bz-gate-feature-desc">Turn any track into a shareable card</div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <rect x="58" y="14" width="112" height="72" rx="14" fill="#fff" fill-opacity="0.04"
+                                        stroke="#fff" stroke-opacity="0.08" transform="rotate(-7 114 50)" />
+                                    <rect x="38" y="26" width="132" height="82" rx="16" fill="#fff" fill-opacity="0.05"
+                                        stroke="#7c3aed" stroke-opacity="0.5" />
+                                    <rect x="50" y="38" width="42" height="42" rx="9" fill="url(#bzGradPB)" />
+                                    <rect x="100" y="42" width="56" height="7" rx="3.5" fill="#fff"
+                                        fill-opacity="0.85" />
+                                    <rect x="100" y="56" width="38" height="6" rx="3" fill="#fff" fill-opacity="0.4" />
+                                    <circle cx="156" cy="98" r="14" fill="url(#bzGradPB)" />
+                                    <circle cx="150" cy="93" r="2.2" fill="#fff" />
+                                    <circle cx="150" cy="103" r="2.2" fill="#fff" />
+                                    <circle cx="161" cy="98" r="2.2" fill="#fff" />
+                                    <line x1="150" y1="93" x2="161" y2="98" stroke="#fff" stroke-width="1.6" />
+                                    <line x1="150" y1="103" x2="161" y2="98" stroke="#fff" stroke-width="1.6" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Made For You Recommendations</div>
+                                <div class="bz-gate-feature-desc">Personalized picks tuned to your taste</div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <rect x="30" y="34" width="62" height="62" rx="12" fill="url(#bzGradBP)"
+                                        fill-opacity="0.5" transform="rotate(-9 61 65)" />
+                                    <rect x="92" y="30" width="62" height="62" rx="12" fill="url(#bzGradPB)"
+                                        fill-opacity="0.65" transform="rotate(8 123 61)" />
+                                    <rect x="62" y="36" width="66" height="66" rx="14" fill="#fff" fill-opacity="0.06"
+                                        stroke="#fff" stroke-opacity="0.15" />
+                                    <rect x="86" y="60" width="6" height="20" rx="3" fill="#c4b5fd" />
+                                    <rect x="96" y="52" width="6" height="28" rx="3" fill="#fff" fill-opacity="0.85" />
+                                    <rect x="106" y="66" width="6" height="14" rx="3" fill="#c4b5fd" />
+                                    <path d="M186,20 L189,28 L197,31 L189,34 L186,42 L183,34 L175,31 L183,28 Z"
+                                        fill="#fff" fill-opacity="0.85" />
+                                    <rect x="34" y="118" width="34" height="18" rx="5" fill="url(#bzGradPB)"
+                                        fill-opacity="0.5" />
+                                    <rect x="76" y="118" width="34" height="18" rx="5" fill="url(#bzGradBP)"
+                                        fill-opacity="0.5" />
+                                    <rect x="118" y="118" width="34" height="18" rx="5" fill="url(#bzGradPB)"
+                                        fill-opacity="0.3" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-clock"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Scheduled Dark Mode</div>
+                                <div class="bz-gate-feature-desc">Automatic dark mode, day and night</div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <circle cx="120" cy="20" r="13" fill="none" stroke="#fff" stroke-opacity="0.35"
+                                        stroke-width="2.4" />
+                                    <line x1="120" y1="20" x2="120" y2="11" stroke="#fff" stroke-opacity="0.65"
+                                        stroke-width="2.4" stroke-linecap="round" />
+                                    <line x1="120" y1="20" x2="128" y2="20" stroke="#fff" stroke-opacity="0.65"
+                                        stroke-width="2.4" stroke-linecap="round" />
+                                    <g stroke="#fff" stroke-opacity="0.3" stroke-width="2">
+                                        <line x1="120" y1="7" x2="120" y2="10" />
+                                        <line x1="120" y1="30" x2="120" y2="33" />
+                                        <line x1="107" y1="20" x2="110" y2="20" />
+                                        <line x1="130" y1="20" x2="133" y2="20" />
+                                    </g>
+                                    <rect x="26" y="58" width="188" height="48" rx="24" fill="#fff" fill-opacity="0.05"
+                                        stroke="#fff" stroke-opacity="0.14" />
+                                    <circle cx="66" cy="82" r="15" fill="#f39c12" />
+                                    <g stroke="#f39c12" stroke-width="3" stroke-linecap="round">
+                                        <line x1="66" y1="64" x2="66" y2="58" transform="rotate(0 66 82)" />
+                                        <line x1="66" y1="64" x2="66" y2="58" transform="rotate(45 66 82)" />
+                                        <line x1="66" y1="64" x2="66" y2="58" transform="rotate(90 66 82)" />
+                                        <line x1="66" y1="64" x2="66" y2="58" transform="rotate(135 66 82)" />
+                                        <line x1="66" y1="64" x2="66" y2="58" transform="rotate(180 66 82)" />
+                                        <line x1="66" y1="64" x2="66" y2="58" transform="rotate(225 66 82)" />
+                                        <line x1="66" y1="64" x2="66" y2="58" transform="rotate(270 66 82)" />
+                                        <line x1="66" y1="64" x2="66" y2="58" transform="rotate(315 66 82)" />
+                                    </g>
+                                    <circle cx="174" cy="82" r="19" fill="url(#bzGradPB)" />
+                                    <path fill="#fff" fill-rule="evenodd"
+                                        d="M174,82 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z M179,79 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-infinity"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Beat Zen Universe (Year wise Playlists)</div>
+                                <div class="bz-gate-feature-desc">Curated playlists spanning every era</div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <circle cx="120" cy="70" r="48" fill="none" stroke="#fff" stroke-opacity="0.16"
+                                        stroke-width="1.4" stroke-dasharray="3 5" />
+                                    <line x1="120" y1="70" x2="120" y2="22" stroke="#fff" stroke-opacity="0.16" />
+                                    <line x1="120" y1="70" x2="165.6" y2="55.2" stroke="#fff" stroke-opacity="0.16" />
+                                    <line x1="120" y1="70" x2="148.2" y2="108.8" stroke="#fff" stroke-opacity="0.16" />
+                                    <line x1="120" y1="70" x2="91.8" y2="108.8" stroke="#fff" stroke-opacity="0.16" />
+                                    <line x1="120" y1="70" x2="74.4" y2="55.2" stroke="#fff" stroke-opacity="0.16" />
+                                    <rect x="111" y="13" width="18" height="18" rx="5" fill="url(#bzGradPB)" />
+                                    <path d="M116,17 L116,27 L125,22 Z" fill="#fff" />
+                                    <rect x="156.6" y="46.2" width="18" height="18" rx="5" fill="url(#bzGradBP)" />
+                                    <path d="M161.6,50.2 L161.6,60.2 L170.6,55.2 Z" fill="#fff" />
+                                    <rect x="139.2" y="99.8" width="18" height="18" rx="5" fill="url(#bzGradPB)" />
+                                    <path d="M144.2,103.8 L144.2,113.8 L153.2,108.8 Z" fill="#fff" />
+                                    <rect x="82.8" y="99.8" width="18" height="18" rx="5" fill="url(#bzGradBP)" />
+                                    <path d="M87.8,103.8 L87.8,113.8 L96.8,108.8 Z" fill="#fff" />
+                                    <rect x="65.4" y="46.2" width="18" height="18" rx="5" fill="url(#bzGradPB)" />
+                                    <path d="M70.4,50.2 L70.4,60.2 L79.4,55.2 Z" fill="#fff" />
+                                    <circle cx="120" cy="70" r="19" fill="url(#bzGradPB)" />
+                                    <path d="M115,61 L115,79 L131,70 Z" fill="#fff" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-keyboard"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Keyboard Shortcuts</div>
+                                <div class="bz-gate-feature-desc">Control playback without touching your mouse</div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <rect x="30" y="20" width="180" height="34" rx="10" fill="url(#bzGradPB)" />
+                                    <path d="M114,29 L114,45 L130,37 Z" fill="#fff" />
+                                    <rect x="105" y="64" width="30" height="26" rx="7" fill="#fff" fill-opacity="0.06"
+                                        stroke="#fff" stroke-opacity="0.18" />
+                                    <rect x="70" y="94" width="30" height="26" rx="7" fill="#fff" fill-opacity="0.06"
+                                        stroke="#fff" stroke-opacity="0.18" />
+                                    <rect x="105" y="94" width="30" height="26" rx="7" fill="#fff" fill-opacity="0.06"
+                                        stroke="#fff" stroke-opacity="0.18" />
+                                    <rect x="140" y="94" width="30" height="26" rx="7" fill="#fff" fill-opacity="0.06"
+                                        stroke="#fff" stroke-opacity="0.18" />
+                                    <path d="M113,81 L120,72 L127,81" fill="none" stroke="#fff" stroke-opacity="0.85"
+                                        stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M113,103 L120,112 L127,103" fill="none" stroke="#fff" stroke-opacity="0.85"
+                                        stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M89,100 L80,107 L89,114" fill="none" stroke="#fff" stroke-opacity="0.85"
+                                        stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M151,100 L160,107 L151,114" fill="none" stroke="#fff" stroke-opacity="0.85"
+                                        stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Song Requests &amp; Feedback</div>
+                                <div class="bz-gate-feature-desc">Tell us what to add next</div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <path
+                                        d="M40,20 h140 a12,12 0 0 1 12,12 v34 a12,12 0 0 1 -12,12 h-100 l-16,16 v-16 h-24 a12,12 0 0 1 -12,-12 v-34 a12,12 0 0 1 12,-12 Z"
+                                        fill="#fff" fill-opacity="0.05" stroke="#7c3aed" stroke-opacity="0.45" />
+                                    <circle cx="64" cy="52" r="6" fill="#c4b5fd" />
+                                    <line x1="70" y1="52" x2="70" y2="28" stroke="#c4b5fd" stroke-width="3"
+                                        stroke-linecap="round" />
+                                    <path d="M70,28 q10,0 10,9" fill="none" stroke="#c4b5fd" stroke-width="3"
+                                        stroke-linecap="round" />
+                                    <rect x="90" y="38" width="70" height="6" rx="3" fill="#fff" fill-opacity="0.5" />
+                                    <rect x="90" y="50" width="50" height="6" rx="3" fill="#fff" fill-opacity="0.3" />
+                                    <rect x="40" y="100" width="130" height="26" rx="13" fill="#fff" fill-opacity="0.04"
+                                        stroke="#fff" stroke-opacity="0.14" />
+                                    <rect x="54" y="110" width="60" height="5" rx="2.5" fill="#fff"
+                                        fill-opacity="0.3" />
+                                    <circle cx="190" cy="113" r="16" fill="url(#bzGradPB)" />
+                                    <path d="M183,113 l18,-7 l-7,18 l-3,-9 Z" fill="#fff" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bz-gate-feature-card">
+                            <div class="bz-gate-feature-icon"><i class="fas fa-list-ul"></i></div>
+                            <div class="bz-gate-feature-copy">
+                                <div class="bz-gate-feature-title">Unique Queue UI</div>
+                                <div class="bz-gate-feature-desc">A cleaner way to see and reorder what's playing next
+                                </div>
+                            </div>
+                            <div class="bz-gate-feature-preview" aria-hidden="true">
+                                <svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid meet">
+                                    <rect x="14" y="12" width="212" height="34" rx="9" fill="#7c3aed"
+                                        fill-opacity="0.14" stroke="#7c3aed" stroke-opacity="0.4" />
+                                    <rect x="24" y="19" width="26" height="20" rx="6" fill="url(#bzGradPB)" />
+                                    <rect x="58" y="21" width="90" height="6" rx="3" fill="#fff" fill-opacity="0.7" />
+                                    <rect x="58" y="32" width="60" height="5" rx="2.5" fill="#fff" fill-opacity="0.4" />
+                                    <rect x="14" y="54" width="212" height="34" rx="9" fill="#fff"
+                                        fill-opacity="0.03" />
+                                    <rect x="24" y="61" width="26" height="20" rx="6" fill="url(#bzGradBP)"
+                                        fill-opacity="0.7" />
+                                    <rect x="58" y="63" width="90" height="6" rx="3" fill="#fff" fill-opacity="0.45" />
+                                    <rect x="58" y="74" width="60" height="5" rx="2.5" fill="#fff"
+                                        fill-opacity="0.25" />
+                                    <rect x="14" y="96" width="212" height="34" rx="9" fill="#fff"
+                                        fill-opacity="0.03" />
+                                    <rect x="24" y="103" width="26" height="20" rx="6" fill="url(#bzGradPB)"
+                                        fill-opacity="0.5" />
+                                    <rect x="58" y="105" width="90" height="6" rx="3" fill="#fff" fill-opacity="0.45" />
+                                    <rect x="58" y="116" width="60" height="5" rx="2.5" fill="#fff"
+                                        fill-opacity="0.25" />
+                                    <g fill="#fff" fill-opacity="0.35">
+                                        <circle cx="204" cy="24" r="1.8" />
+                                        <circle cx="211" cy="24" r="1.8" />
+                                        <circle cx="204" cy="30" r="1.8" />
+                                        <circle cx="211" cy="30" r="1.8" />
+                                    </g>
+                                    <g fill="#fff" fill-opacity="0.25">
+                                        <circle cx="204" cy="66" r="1.8" />
+                                        <circle cx="211" cy="66" r="1.8" />
+                                        <circle cx="204" cy="72" r="1.8" />
+                                        <circle cx="211" cy="72" r="1.8" />
+                                    </g>
+                                    <g fill="#fff" fill-opacity="0.25">
+                                        <circle cx="204" cy="108" r="1.8" />
+                                        <circle cx="211" cy="108" r="1.8" />
+                                        <circle cx="204" cy="114" r="1.8" />
+                                        <circle cx="211" cy="114" r="1.8" />
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /.bz-gate-features-grid -->
+
+                </div>
+                <!-- /.bz-gate-features-section -->
+
+            </div>
+
+            <!-- ── Sign Up Form (inline in gate) ── -->
+            <div id="bz-gate-signup-form" style="display:none; width:100%;">
+                <div class="bz-email-form-header">
+                    <button class="bz-form-back-btn" id="bz-gate-signup-back" aria-label="Back">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <span>Create Account</span>
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-su-fullname"><i class="fas fa-user"></i> Full
+                        Name</label>
+                    <input id="bz-gate-su-fullname" class="bz-field-input" type="text" placeholder="Your full name"
+                        autocomplete="name" spellcheck="false" />
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-su-email"><i class="fas fa-envelope"></i> Email
+                        Address</label>
+                    <input id="bz-gate-su-email" class="bz-field-input" type="email" placeholder="yourname@gmail.com"
+                        autocomplete="email" spellcheck="false" />
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-su-password"><i class="fas fa-lock"></i> Password</label>
+                    <div class="bz-field-pw-wrap">
+                        <input id="bz-gate-su-password" class="bz-field-input" type="password"
+                            placeholder="Min 6 characters" autocomplete="new-password" />
+                        <button type="button" class="bz-pw-toggle" onclick="bzTogglePw('bz-gate-su-password',this)"
+                            tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-su-confirm"><i class="fas fa-lock"></i> Confirm
+                        Password</label>
+                    <div class="bz-field-pw-wrap">
+                        <input id="bz-gate-su-confirm" class="bz-field-input" type="password"
+                            placeholder="Repeat password" autocomplete="new-password" />
+                        <button type="button" class="bz-pw-toggle" onclick="bzTogglePw('bz-gate-su-confirm',this)"
+                            tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div id="bz-gate-su-error" class="bz-form-error" style="display:none;"></div>
+                <p class="bz-form-promo-note"><i class="fas fa-bolt"></i> Free forever, no card needed — plus
+                    ad-free listening if you're one of our first 100 active users.</p>
+                <button id="bz-gate-su-submit" class="bz-form-submit-btn"><i class="fas fa-user-plus"></i> Create
+                    Account</button>
+                <p class="bz-form-switch-text">Already have an account?
+                    <button type="button" class="bz-form-link-btn" id="bz-gate-su-to-si">Sign in</button>
+                </p>
+            </div>
+
+            <!-- ── Sign In Form (inline in gate) ── -->
+            <div id="bz-gate-signin-form" style="display:none; width:100%;">
+                <div class="bz-email-form-header">
+                    <button class="bz-form-back-btn" id="bz-gate-signin-back" aria-label="Back">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <span>Sign In</span>
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-si-email"><i class="fas fa-envelope"></i> Email
+                        Address</label>
+                    <input id="bz-gate-si-email" class="bz-field-input" type="email" placeholder="yourname@gmail.com"
+                        autocomplete="email" spellcheck="false" />
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-si-password"><i class="fas fa-lock"></i> Password</label>
+                    <div class="bz-field-pw-wrap">
+                        <input id="bz-gate-si-password" class="bz-field-input" type="password"
+                            placeholder="Your password" autocomplete="current-password" />
+                        <button type="button" class="bz-pw-toggle" onclick="bzTogglePw('bz-gate-si-password',this)"
+                            tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div id="bz-gate-si-error" class="bz-form-error" style="display:none;"></div>
+                <div class="bz-forgot-link-row">
+                    <button type="button" id="bz-gate-si-forgot" class="bz-form-link-btn"><i class="fas fa-key"></i>
+                        Forgot password?</button>
+                </div>
+                <button id="bz-gate-si-submit" class="bz-form-submit-btn" disabled
+                    style="opacity:0.45;cursor:not-allowed;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+                <p class="bz-form-switch-text">Don't have an account?
+                    <button type="button" class="bz-form-link-btn" id="bz-gate-si-to-su">Sign up</button>
+                </p>
+            </div>
+
+            <!-- ── Forgot Password Form (inline in gate) ── -->
+            <div id="bz-gate-forgot-form" style="display:none; width:100%;">
+                <!-- Step 1: Enter email -->
+                <div id="bz-gate-forgot-step1">
+                    <div class="bz-email-form-header">
+                        <button class="bz-form-back-btn" id="bz-gate-forgot-back" aria-label="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <span>Reset Password</span>
+                    </div>
+                    <p>Enter the email you registered with. We'll send a reset link to your inbox.</p>
+                    <div class="bz-field-wrap">
+                        <label class="bz-field-label" for="bz-gate-fp-email"><i class="fas fa-envelope"></i> Email
+                            Address</label>
+                        <input id="bz-gate-fp-email" class="bz-field-input" type="email"
+                            placeholder="yourname@gmail.com" autocomplete="email" spellcheck="false" />
+                    </div>
+                    <div id="bz-gate-fp-error" class="bz-form-error" style="display:none;"></div>
+                    <button id="bz-gate-fp-submit" class="bz-form-submit-btn"><i class="fas fa-paper-plane"></i> Send
+                        Reset Link</button>
+                    <p class="bz-form-switch-text">Remembered it?
+                        <button type="button" class="bz-form-link-btn" id="bz-gate-fp-to-si">Sign in</button>
+                    </p>
+                </div>
+                <!-- Step 2: Email sent -->
+                <div id="bz-gate-forgot-step2" style="display:none;">
+                    <div class="bz-step-icon bz-step-icon--purple"><i class="fas fa-envelope-open-text"></i></div>
+                    <h3>Check Your Inbox</h3>
+                    <p>A reset link has been sent. Click it to reset your password, then come back here to sign in.</p>
+                    <button type="button" class="bz-form-submit-btn" id="bz-gate-fp-goto-si"><i
+                            class="fas fa-sign-in-alt"></i> Back to Sign In</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Firebase SDK — required for sign-in and cloud sync -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+
+    <!-- On-device OCR, used to auto-check payment screenshots (date / UPI name / amount) before submitting for admin review -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+    <!-- BUG FIX: script.js calls auth.js globals -->
+    <script src="auth.js" defer></script>
+    <script src="script.js?v=8" defer></script>
+
+    <!-- PWA install prompt + service worker -->
+</body>
+
+</html>
