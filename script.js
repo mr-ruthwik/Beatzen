@@ -1404,6 +1404,24 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             } catch (_) { return '—'; }
         }
 
+        // Live "time left" readout shown under the expiry line on the
+        // Activated view — no label, just the countdown itself
+        // (e.g. "13d 05h 42m 18s", or "05h 42m 18s" once under a day left).
+        function _bzFormatPremiumCountdown(ms) {
+            if (ms <= 0) return '0s';
+            const totalSec = Math.floor(ms / 1000);
+            const d = Math.floor(totalSec / 86400);
+            const h = Math.floor((totalSec % 86400) / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            const parts = [];
+            if (d > 0) parts.push(d + 'd');
+            if (d > 0 || h > 0) parts.push(String(h).padStart(2, '0') + 'h');
+            if (d > 0 || h > 0 || m > 0) parts.push(String(m).padStart(2, '0') + 'm');
+            parts.push(String(s).padStart(2, '0') + 's');
+            return parts.join(' ');
+        }
+
         // Called every second by _bzPremiumTick. Keeps the "Activated" view's
         // sub-line showing the plan + exact expiry, and — the instant the
         // clock passes expiresAt — flips the local premium flag off,
@@ -1412,6 +1430,7 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
         // leaving a stale "Active" screen up.
         function _bzUpdatePremiumCountdown() {
             const sub = document.getElementById('bz-premium-active-sub');
+            const countdownEl = document.getElementById('bz-premium-active-countdown');
             if (!sub || !window._bzPremiumExpiresAt) return;
             const remaining = window._bzPremiumExpiresAt - Date.now();
             if (remaining <= 0) {
@@ -1422,8 +1441,9 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
                 if (activeView && activeView.style.display !== 'none') _bzShowPremiumSubView('plans');
                 return;
             }
-            sub.textContent = 'Your premium plan of ' + _bzPremiumPlanLabel(window._bzPremiumPlan) +
-                ' ending in ' + _bzFormatPremiumEndDate(window._bzPremiumExpiresAt);
+            sub.innerHTML = 'Your premium plan of ' + _bzEscapeHTML(_bzPremiumPlanLabel(window._bzPremiumPlan)) +
+                ' ends in<br>' + _bzEscapeHTML(_bzFormatPremiumEndDate(window._bzPremiumExpiresAt));
+            if (countdownEl) countdownEl.textContent = _bzFormatPremiumCountdown(remaining);
         }
 
         // planId is optional — omit it (e.g. when just re-showing an
@@ -1549,14 +1569,50 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             }
 
             const qrBtn = document.getElementById('bz-premium-show-qr-btn');
-            const qrWrap = document.getElementById('bz-premium-qr-wrap');
-            if (qrBtn && qrWrap) {
+            const qrBlock = document.getElementById('bz-premium-qr-block');
+            if (qrBtn && qrBlock) {
                 qrBtn.addEventListener('click', function () {
-                    const showing = qrWrap.style.display !== 'none';
-                    qrWrap.style.display = showing ? 'none' : 'block';
+                    const showing = qrBlock.style.display !== 'none';
+                    qrBlock.style.display = showing ? 'none' : 'block';
                     qrBtn.innerHTML = showing
                         ? '<i class="fas fa-qrcode"></i> Show QR'
                         : '<i class="fas fa-chevron-up"></i> Hide QR';
+                });
+            }
+
+            // Share the QR as an image — lets someone pay from another
+            // device/app by sharing it over WhatsApp, etc, or save it to
+            // their gallery when the Web Share API isn't available.
+            const qrShareBtn = document.getElementById('bz-premium-qr-share-btn');
+            const qrImgEl = document.getElementById('bz-premium-qr-img');
+            if (qrShareBtn && qrImgEl) {
+                qrShareBtn.addEventListener('click', async function () {
+                    try {
+                        const resp = await fetch(qrImgEl.src);
+                        const blob = await resp.blob();
+                        const file = new File([blob], 'beatzen-upi-qr.png', { type: blob.type || 'image/png' });
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: 'BeatZen UPI QR',
+                                text: 'Scan this QR with any UPI app to pay.'
+                            });
+                        } else if (navigator.share) {
+                            await navigator.share({ title: 'BeatZen UPI QR', text: 'Scan this QR with any UPI app to pay.' });
+                        } else {
+                            const a = document.createElement('a');
+                            a.href = qrImgEl.src;
+                            a.download = 'beatzen-upi-qr.png';
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            showToast('QR image downloaded — share it from your gallery.');
+                        }
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return;
+                        console.error('Beat Zen: QR share failed', e);
+                        showToast("Couldn't share the QR image.");
+                    }
                 });
             }
 
@@ -5938,7 +5994,7 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
             function _renderDetailPane() {
                 const userMeta = _bzAdminUsersData.find(function (u) { return u.id === uid; });
                 detailEl.innerHTML = _bzAdminBackToListButton()
-                    + `<div class="stg-section-label"><i class="fas fa-sliders-h"></i> Synced Data <span style="opacity:.5; font-weight:400; font-size:.75rem;">(live)</span></div>`
+                    + `<div class="stg-section-label"><i class="fas fa-sliders-h"></i> Synced Data</div>`
                     + _bzRenderUserDetail(_lastSyncData, userMeta);
                 const backBtn = document.getElementById('bz-admin-back-to-list-btn');
                 if (backBtn) backBtn.addEventListener('click', function () { _bzAdminStopUserDetailListener(); bzShowAdminUserList(); });
