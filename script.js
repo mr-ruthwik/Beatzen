@@ -1438,6 +1438,15 @@ window.BZ_MANUAL_CURRENT_USERS = 28; // <-- EDIT THIS NUMBER MANUALLY
 
             if (hasDate && hasUpi && hasAmount) return { ok: true, checks: checks };
 
+            // Debug aid: open the browser/remote devtools console to see
+            // exactly what OCR extracted and why a check failed, instead of
+            // having to re-share the screenshot to diagnose it.
+            console.warn('Beat Zen: payment verification failed', {
+                expectedAmount: expectedAmount,
+                checks: checks,
+                rawOcrText: text
+            });
+
             return { ok: false, checks: checks };
         }
 
