@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beat Zen - Premium</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- iOS / Safari home screen icons (Apple ignores manifest icons) -->
+    <link rel="apple-touch-icon"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_512,h_512,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+    <link rel="apple-touch-icon" sizes="180x180"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_180,h_180,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+    <link rel="apple-touch-icon" sizes="152x152"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_152,h_152,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+    <link rel="apple-touch-icon" sizes="120x120"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_120,h_120,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+
+    <!-- Android Chrome / browser tab favicon -->
+    <link rel="icon" type="image/jpeg" sizes="192x192"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_192,h_192,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+    <link rel="shortcut icon"
+        href="https://res.cloudinary.com/beatzenapp/image/upload/w_32,h_32,c_fill,f_jpg,q_auto/v1782654641/Logo_kmpfjf.jpg">
+
+    <!-- PWA theme color (status bar color on Android) -->
+    <meta id="bz-theme-color" name="theme-color" content="#12121a">
+
+    <!-- iOS PWA settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Beat Zen">
+
+    <!-- Android / Windows PWA settings -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Beat Zen">
+
+    <!-- Fullscreen player display font (matches Now Playing screen design) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css?v=11">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha384-nRgPTkuX86pH8yjPJUAFuASXQSSl2/bBUiNV47vSYpKFxHJhbcrGnmlYpYJMeD7a" crossorigin="anonymous"
+        media="print" onload="this.media='all'">
+
+    <!-- FAST-PATH AUTH -->
+    <script>
+        (function bzAuthFastPath() {
+            try {
+                var hasSession = false;
+                // Scan ALL localStorage keys for any Firebase auth entry.
+                // Firebase LOCAL persistence writes: firebase:authUser:<apiKey>:[DEFAULT]
+                // We scan rather than hardcode so it works across SDK versions.
+                for (var _i = 0; _i < localStorage.length; _i++) {
+                    var _k = localStorage.key(_i);
+                    if (_k && _k.indexOf('firebase:authUser:') === 0) {
+                        var _v = localStorage.getItem(_k);
+                        if (_v && _v.length > 10) { hasSession = true; break; }
+                    }
+                }
+                // Fallback: beatZen_session_uid is written by auth.js after Firebase
+                // confirms sign-in and persists across reloads.
+                if (!hasSession) {
+                    hasSession = !!localStorage.getItem('beatZen_session_uid');
+                }
+                if (hasSession) {
+                    document.documentElement.classList.add('bz-signed-in');
+                } else {
+                    // No cached session — mark as guest so auth gate shows immediately
+                    document.documentElement.classList.add('bz-guest');
+                }
+            } catch (_) {
+                // If localStorage is blocked (e.g. private mode), assume guest
+                document.documentElement.classList.add('bz-guest');
+            }
+        })();
+    </script>
+    <!-- CSS responding to bz-signed-in -->
+
+    <!-- MOBILE TAP FIX: inline touch-action:manipulation on player controls -->
+
+    <!-- Loader styles inlined — renders splash before style.css parses -->
+</head>
+
+<body>
+
+    <div id="bz-loader-overlay">
+        <div class="bz-loader-ring">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="bzRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#7c3aed" />
+                        <stop offset="50%" stop-color="#2575fc" />
+                        <stop offset="100%" stop-color="#0ea5e9" />
+                    </linearGradient>
+                </defs>
+                <circle class="bz-loader-ring-track" cx="50" cy="50" r="46" />
+                <circle class="bz-loader-ring-fill" cx="50" cy="50" r="46" />
+            </svg>
+            <img src="https://res.cloudinary.com/beatzenapp/image/upload/v1782654641/Logo_kmpfjf.jpg" alt="Beat Zen">
+        </div>
+        <div class="bz-loader-brand">Beat Zen</div>
+        <div class="bz-loader-tagline">Premium Music</div>
+        <div class="bz-loader-status-wrap">
+            <div class="bz-loader-dots"><span></span><span></span><span></span><span></span></div>
+            <div class="bz-loader-status" id="bz-loader-status">Seamless listening experience across every device.</div>
+            <!-- Slow network warning — shown after 3s if still loading -->
+            <div id="bz-slow-net-banner">
+                <span class="bz-slow-net-icon">📶</span>
+                <div class="bz-slow-net-text">
+                    <span class="bz-slow-net-title">Slow connection detected</span>
+                    <span class="bz-slow-net-sub">Try switching to a faster network or Wi-Fi</span>
+                </div>
+                <button class="bz-slow-net-dismiss"
+                    onclick="document.getElementById('bz-slow-net-banner').style.display='none'"
+                    title="Dismiss">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- iOS manual install banner -->
+    <div id="bz-ios-banner">
+        <button class="bz-ios-close"
+            onclick="document.getElementById('bz-ios-banner').classList.remove('visible')">✕</button>
+        <div class="bz-ios-title">Add to Home Screen</div>
+        <div class="bz-ios-steps">
+            <div class="bz-ios-step">
+                <div class="bz-ios-num">1</div><span>Tap the <strong>Share</strong> button at the bottom of
+                    Safari</span>
+            </div>
+            <div class="bz-ios-step">
+                <div class="bz-ios-num">2</div><span>Tap <strong>"Add to Home Screen"</strong></span>
+            </div>
+            <div class="bz-ios-step">
+                <div class="bz-ios-num">3</div><span>Tap <strong>Add</strong> — Beat Zen appears on your home
+                    screen</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating slow-network toast shown after app launches on slow -->
+    <div id="bz-slow-net-toast">
+        <span class="bz-slow-net-icon">📶</span>
+        <div class="bz-slow-net-text">
+            <span class="bz-slow-net-title">Slow connection detected</span>
+            <span class="bz-slow-net-sub">Switch to Wi-Fi or a faster network for better experience</span>
+        </div>
+        <button class="bz-slow-net-dismiss" id="bz-slow-net-toast-close" title="Dismiss">✕</button>
+    </div>
+
+    <!-- Offline / no-internet toast -->
+    <div id="bz-offline-toast">
+        <span class="bz-slow-net-icon">🔴</span>
+        <div class="bz-slow-net-text">
+            <span class="bz-slow-net-title" style="color:#f87171;">No internet connection</span>
+            <span class="bz-slow-net-sub">Please connect to a network to continue</span>
+        </div>
+        <button class="bz-slow-net-dismiss" id="bz-offline-toast-close" title="Dismiss">✕</button>
+    </div>
+
+    <!-- Back online restored toast -->
+    <div id="bz-online-toast">
+        <span class="bz-slow-net-icon">✅</span>
+        <div class="bz-slow-net-text">
+            <span class="bz-slow-net-title" style="color:#4ade80;">Back online!</span>
+            <span class="bz-slow-net-sub">Connection restored — everything is working again</span>
+        </div>
+        <button class="bz-slow-net-dismiss" id="bz-online-toast-close" title="Dismiss">✕</button>
+    </div>
+
+    <!-- Mobile-only top bar: centered logo with the profile button pinned -->
+    <header id="bz-mobile-topbar" class="bz-mobile-topbar" aria-label="Beat Zen">
+        <div class="bz-mobile-topbar-spacer" aria-hidden="true"></div>
+        <div class="bz-mobile-topbar-brand">
+            <img class="bz-mobile-topbar-logo"
+                src="https://res.cloudinary.com/beatzenapp/image/upload/w_64,h_64,c_fill,f_png,q_auto/v1782654641/Logo_kmpfjf.jpg"
+                alt="" aria-hidden="true">
+            <span class="bz-mobile-topbar-title">Beat Zen</span>
+        </div>
+        <button id="bz-mobile-profile-btn" class="bz-mobile-topbar-profile" type="button"
+            aria-label="View your profile">
+            <img id="bz-mobile-topbar-avatar-img" class="bz-mobile-topbar-avatar-img" src="" alt=""
+                style="display:none;">
+            <span id="bz-mobile-topbar-avatar-init" class="bz-mobile-topbar-avatar-init bz-topbar-avatar--guest">
+                <i class="fas fa-user-circle"></i>
+            </span>
+        </button>
+    </header>
+
+    <nav class="navbar" aria-label="Main Navigation">
+        <div class="nav-links">
+            <a href="#" id="home-link" aria-label="Go to Home"><span class="nav-link-content"><i
+                        class="fas fa-home"></i><span>Home</span></span></a>
+            <a href="#" id="search-link" aria-label="Search Music"><span class="nav-link-content"><i
+                        class="fas fa-search"></i><span>Search</span></span></a>
+            <a href="#" id="playlists-link" aria-label="View Playlists"><span class="nav-link-content"><i
+                        class="fas fa-compact-disc"></i><span>Playlists</span></span></a>
+            <a href="#" id="settings-link" aria-label="Settings"><span class="nav-link-content"><i
+                        class="fas fa-cog"></i><span>Settings</span></span></a>
+            <a href="#" id="profile-link" class="bz-nav-desktop-only" aria-label="Profile"><span
+                    class="nav-link-content"><i class="fas fa-user"></i><span>Profile</span></span></a>
+        </div>
+    </nav>
+
+    <!-- Year Jump Bar — visible only on Home tab -->
+    <div id="bz-year-jump-bar" class="bz-year-jump-bar" aria-label="Jump to Year" style="display:none;">
+        <div class="bz-year-jump-inner" id="bz-year-jump-inner"></div>
+    </div>
+
+    <!-- Playlist Section Nav Bar — visible only on Playlists tab -->
+    <div id="bz-playlist-nav-bar" class="bz-year-jump-bar bz-playlist-nav-bar" aria-label="Jump to playlist section"
+        style="display:none;">
+        <div class="bz-year-jump-inner" id="bz-playlist-nav-inner">
+            <button class="bz-year-jump-pill bz-playlist-nav-pill active" data-target="bzp-your-playlists"><i
+                    class="fas fa-compact-disc"></i> Your Playlists</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-mfy-section"><i
+                    class="fas fa-wand-magic-sparkles"></i> Made for You</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-rec-section"><i
+                    class="fas fa-compass"></i> Recommended</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-universe-wrap"><i
+                    class="fas fa-infinity"></i> Beat Zen Universe</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-artists-section"><i
+                    class="fas fa-microphone-lines"></i> Artists</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-heroes-section"><i
+                    class="fas fa-star"></i> Heroes</button>
+            <button class="bz-year-jump-pill bz-playlist-nav-pill" data-target="bzp-la-section"><i
+                    class="fas fa-clock-rotate-left"></i> Listen Again</button>
+        </div>
+    </div>
+
+    <!-- Scroll to Top floating button -->
+    <button id="bz-scroll-top-btn" class="bz-scroll-top-btn" aria-label="Scroll to top" title="Scroll to top"
+        style="display:none;">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <main class="main-content">
+
+        <section id="search-container" class="search-container hidden" aria-label="Search Section">
+            <div class="search-bar-wrapper">
+                <input type="text" id="search-bar" class="search-bar"
+                    placeholder="Search albums, years, songs, artists">
+                <i class="fas fa-search search-icon"></i>
+                <i class="fas fa-times-circle clear-search-icon" id="clear-search" style="display: none;"></i>
+            </div>
+        </section>
+
+        <section id="search-results-container" class="search-results-container"></section>
+        <section id="year-sections-container" class="year-sections-container"></section>
+        <section id="playlists-container" class="playlists-container" style="display: none;"></section>
+        <section id="artists-container" class="artists-container" style="display: none;"></section>
+
+        <section id="premium-container" class="premium-container" style="display: none;">
+
+            <div class="bz-profile-page-nav-bar">
+                <button class="bz-back-btn bz-profile-page-back-btn" id="bz-premium-back-btn" aria-label="Go back">
+                    <i class="fas fa-arrow-left"></i><span class="bz-back-label">Back</span>
+                </button>
+            </div>
+
+            <!-- VIEW: Plans / Features / Payment / Upload -->
+            <div id="bz-premium-plans-view" class="bz-premium-view">
+                <div class="bz-premium-header">
+                    <div class="bz-premium-header-icon"><i class="fas fa-crown"></i></div>
+                    <h2 class="bz-premium-header-title">Upgrade to Premium</h2>
+                </div>
+
+                <div class="stg-section bz-premium-teaser-section">
+                    <div class="stg-section-label"><i class="fas fa-star"></i> What You Get</div>
+                    <div class="bz-premium-teaser-grid">
+                        <div class="bz-premium-teaser-chip"><i
+                                class="fas fa-record-vinyl bz-feat-orange"></i><span>Yearly Browse Albums</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-moon bz-feat-blue"></i><span>Sleep
+                                Timer</span></div>
+                        <div class="bz-premium-teaser-chip"><i
+                                class="fas fa-share-nodes bz-feat-green"></i><span>Shareable Song Cards</span></div>
+                        <div class="bz-premium-teaser-chip"><i
+                                class="fas fa-circle-half-stroke bz-feat-orange"></i><span>Scheduled Dark Mode</span>
+                        </div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-layer-group bz-feat-blue"></i><span>Beat
+                                Zen Universe</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-keyboard bz-feat-green"></i><span>Keyboard
+                                Shortcuts</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-comment-dots bz-feat-red"></i><span>Song
+                                Requests</span></div>
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><span class="bz-step-num">1</span> Choose Your Plan</div>
+                    <div class="bz-premium-plans-grid" id="bz-premium-plans-grid">
+                        <button type="button" class="bz-premium-plan-card selected" data-plan="month" data-hours="720"
+                            data-amount="39">
+                            <span class="bz-premium-plan-radio"><i class="fas fa-check"></i></span>
+                            <span class="bz-premium-plan-name">1 Month</span>
+                            <span class="bz-premium-plan-price">₹39</span>
+                        </button>
+                        <button type="button" class="bz-premium-plan-card" data-plan="quarter" data-hours="2160"
+                            data-amount="69">
+                            <span class="bz-premium-plan-badge">Save 41%</span>
+                            <span class="bz-premium-plan-radio"><i class="fas fa-check"></i></span>
+                            <span class="bz-premium-plan-name">3 Months</span>
+                            <span class="bz-premium-plan-price">₹69</span>
+                            <span class="bz-premium-plan-sub">≈ ₹23/mo</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><span class="bz-step-num">2</span> Pay via UPI</div>
+                    <div class="bz-premium-payment-card">
+                        <div class="bz-premium-amount-row">
+                            <span class="bz-premium-amount-label">Amount Payable</span>
+                            <span class="bz-premium-amount-value" id="bz-premium-amount-value">₹39</span>
+                        </div>
+                        <div class="bz-premium-upi-box">
+                            <span class="bz-premium-upi-label">UPI ID</span>
+                            <div class="bz-premium-upi-id-row">
+                                <span id="bz-premium-upi-id" class="bz-premium-upi-id">beatzenapp@nyes</span>
+                                <button type="button" id="bz-premium-copy-upi-btn" class="bz-premium-upi-copy-btn"
+                                    aria-label="Copy UPI ID"><i class="fas fa-copy"></i> Copy</button>
+                            </div>
+                        </div>
+                        <button type="button" id="bz-premium-show-qr-btn" class="stg-action-btn stg-btn--purple"
+                            style="width:100%; margin-top:10px;">
+                            <i class="fas fa-qrcode"></i> Show QR
+                        </button>
+                        <div id="bz-premium-qr-block" class="bz-premium-qr-block" style="display:none;">
+                            <div id="bz-premium-qr-wrap" class="bz-premium-qr-wrap">
+                                <img id="bz-premium-qr-img" src="" alt="UPI QR Code" class="bz-premium-qr-img">
+                            </div>
+                            <p class="bz-premium-qr-hint">Share this QR to pay through any UPI app</p>
+                            <button type="button" id="bz-premium-qr-share-btn" class="stg-action-btn stg-btn--blue"
+                                style="width:100%; margin-top:10px;">
+                                <i class="fas fa-share-nodes"></i> Share Image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><span class="bz-step-num">3</span> Upload Payment Proof</div>
+                    <div class="bz-premium-upload-card">
+                        <input type="file" id="bz-premium-screenshot-input" accept="image/*" style="display:none;">
+                        <p class="bz-premium-upload-hint">Add a screenshot of your UPI payment confirmation so we can
+                            verify it.</p>
+                        <div id="bz-premium-upload-preview-wrap" class="bz-premium-upload-preview-wrap"
+                            style="display:none;">
+                            <img id="bz-premium-upload-preview" class="bz-premium-upload-preview" src=""
+                                alt="Payment screenshot">
+                        </div>
+                        <button type="button" id="bz-premium-upload-btn" class="stg-action-btn stg-btn--green"
+                            style="width:100%;">
+                            <i class="fas fa-camera"></i> Upload Payment Screenshot
+                        </button>
+                        <button type="button" id="bz-premium-submit-btn" class="stg-action-btn stg-btn--blue"
+                            style="width:100%; margin-top:10px; display:none;">
+                            <i class="fas fa-paper-plane"></i> Submit for Verification
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- VIEW: Verifying (pending admin review) -->
+            <div id="bz-premium-pending-view" class="bz-premium-view bz-premium-status-view" style="display:none;">
+                <div class="bz-premium-spinner"></div>
+                <h3>Verifying Your Payment</h3>
+                <p class="bz-premium-status-sub">This usually takes a few minutes</p>
+            </div>
+
+            <!-- VIEW: Activated -->
+            <div id="bz-premium-active-view" class="bz-premium-view bz-premium-status-view" style="display:none;">
+                <div class="bz-premium-success-icon"><i class="fas fa-check"></i></div>
+                <h3>Premium Activated</h3>
+                <p class="bz-premium-status-sub" id="bz-premium-active-sub">Enjoy all premium features</p>
+                <p class="bz-premium-countdown" id="bz-premium-active-countdown"></p>
+                <button type="button" id="bz-premium-active-done-btn" class="stg-action-btn stg-btn--green">
+                    <i class="fas fa-crown"></i> Upgrade to Premium</button>
+            </div>
+
+            <!-- VIEW: Verification failed -->
+            <div id="bz-premium-failed-view" class="bz-premium-view bz-premium-status-view" style="display:none;">
+                <div class="bz-premium-fail-icon"><i class="fas fa-times"></i></div>
+                <h3>Payment Failed</h3>
+                <p class="bz-premium-status-sub" id="bz-premium-failed-reason">We couldn't verify your payment
+                    screenshot. Please upload a proper screenshot and try again.</p>
+                <ul id="bz-premium-failed-checklist" class="bz-premium-failed-checklist" style="display:none;"></ul>
+                <p class="bz-premium-status-sub" id="bz-premium-failed-instruction" style="display:none;"></p>
+                <button type="button" id="bz-premium-try-again-btn" class="stg-action-btn stg-btn--blue">Try
+                    Again</button>
+            </div>
+
+        </section>
+
+        <!-- Updates page — opened from within Settings; empty state for now -->
+        <section id="updates-container" class="updates-container" style="display: none;">
+
+            <div class="bz-profile-page-nav-bar">
+                <button class="bz-back-btn bz-profile-page-back-btn" id="bz-updates-back-btn" aria-label="Go back">
+                    <i class="fas fa-arrow-left"></i><span class="bz-back-label">Back</span>
+                </button>
+            </div>
+
+            <div class="bz-updates-empty">
+                <i class="fas fa-bell bz-updates-empty-icon" aria-hidden="true"></i>
+                <p class="bz-updates-empty-text">No updates for now</p>
+            </div>
+
+        </section>
+
+        <section id="settings-container" class="settings-container" style="display: none;">
+
+            <!-- Auth notice banner (shown when not signed in) -->
+            <div id="bz-auth-notice" style="display:none;">
+                <div class="bz-auth-notice-inner">
+                    <div class="bz-auth-notice-icon"><i class="fas fa-lock"></i></div>
+                    <div class="bz-auth-notice-text">
+                        <h4>Sign in to Access Beat Zen</h4>
+                        <p>Create a free account or sign in to browse music, build playlists, and sync across all your
+                            devices.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account card moved to the Profile page -->
+            <div class="stg-section" id="stg-account-section" style="display:none;">
+                <div class="stg-section-label"><i class="fas fa-user-circle"></i> Account</div>
+
+                <div id="bz-auth-signedout" class="bz-auth-card" style="display:none;">
+
+                    <!-- Card header -->
+                    <div class="bz-auth-card-icon"><i class="fas fa-user-circle"></i></div>
+                    <div class="bz-auth-card-text">
+                        <h4>Sign In to Beat Zen</h4>
+                        <p>Create a free account or sign in to browse music, build playlists, and sync across all your
+                            devices.</p>
+                    </div>
+
+                    <!-- Auth buttons — single row -->
+                    <div class="bz-email-auth-btns">
+                        <button id="bz-show-signup-btn" class="bz-email-auth-toggle-btn">
+                            <i class="fas fa-user-plus"></i> Sign Up
+                        </button>
+                        <button id="bz-show-signin-btn"
+                            class="bz-email-auth-toggle-btn bz-email-auth-toggle-btn--secondary">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+                    </div>
+
+                    <!-- ── Sign Up Form ── -->
+                    <div id="bz-email-signup-form" class="bz-email-form" style="display:none;">
+                        <div class="bz-email-form-header">
+                            <button id="bz-signup-back-btn" class="bz-form-back-btn" aria-label="Back">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <span>Create Account</span>
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signup-fullname">
+                                <i class="fas fa-user"></i> Full Name
+                            </label>
+                            <input id="bz-signup-fullname" class="bz-field-input" type="text"
+                                placeholder="Your full name" autocomplete="name" spellcheck="false" />
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signup-email">
+                                <i class="fas fa-envelope"></i> Email Address
+                            </label>
+                            <input id="bz-signup-email" class="bz-field-input" type="email"
+                                placeholder="yourname@gmail.com" autocomplete="email" spellcheck="false" />
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signup-password">
+                                <i class="fas fa-lock"></i> Password
+                            </label>
+                            <div class="bz-field-pw-wrap">
+                                <input id="bz-signup-password" class="bz-field-input" type="password"
+                                    placeholder="Min 6 characters" autocomplete="new-password" />
+                                <button type="button" class="bz-pw-toggle"
+                                    onclick="bzTogglePw('bz-signup-password',this)" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signup-confirm">
+                                <i class="fas fa-lock"></i> Confirm Password
+                            </label>
+                            <div class="bz-field-pw-wrap">
+                                <input id="bz-signup-confirm" class="bz-field-input" type="password"
+                                    placeholder="Repeat password" autocomplete="new-password" />
+                                <button type="button" class="bz-pw-toggle"
+                                    onclick="bzTogglePw('bz-signup-confirm',this)" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="bz-signup-error" class="bz-form-error" style="display:none;"></div>
+
+                        <button id="bz-signup-submit-btn" class="bz-form-submit-btn">
+                            <i class="fas fa-user-plus"></i> Create Account
+                        </button>
+
+                        <p class="bz-form-switch-text">
+                            Already have an account?
+                            <button type="button" class="bz-form-link-btn"
+                                onclick="document.getElementById('bz-show-signin-btn').click()">Sign in</button>
+                        </p>
+                    </div><!-- end signup form -->
+
+                    <!-- ── Sign In Form ── -->
+                    <div id="bz-email-signin-form" class="bz-email-form" style="display:none;">
+                        <div class="bz-email-form-header">
+                            <button id="bz-signin-back-btn" class="bz-form-back-btn" aria-label="Back">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <span>Sign In</span>
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signin-email">
+                                <i class="fas fa-envelope"></i> Email Address
+                            </label>
+                            <input id="bz-signin-email" class="bz-field-input" type="email"
+                                placeholder="yourname@gmail.com" autocomplete="email" spellcheck="false" />
+                        </div>
+
+                        <div class="bz-field-wrap">
+                            <label class="bz-field-label" for="bz-signin-password">
+                                <i class="fas fa-lock"></i> Password
+                            </label>
+                            <div class="bz-field-pw-wrap">
+                                <input id="bz-signin-password" class="bz-field-input" type="password"
+                                    placeholder="Your password" autocomplete="current-password" />
+                                <button type="button" class="bz-pw-toggle"
+                                    onclick="bzTogglePw('bz-signin-password',this)" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="bz-signin-error" class="bz-form-error" style="display:none;"></div>
+
+                        <div class="bz-forgot-link-row">
+                            <button type="button" id="bz-forgot-link-btn" class="bz-form-link-btn">
+                                <i class="fas fa-key"></i> Forgot password?
+                            </button>
+                        </div>
+
+                        <button id="bz-signin-submit-btn" class="bz-form-submit-btn">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+
+                        <p class="bz-form-switch-text">
+                            Don't have an account?
+                            <button type="button" class="bz-form-link-btn"
+                                onclick="document.getElementById('bz-show-signup-btn').click()">Sign up</button>
+                        </p>
+                    </div><!-- end signin form -->
+
+                    <!-- ── Forgot Password Form ── -->
+                    <div id="bz-forgot-password-form" class="bz-email-form" style="display:none;">
+
+                        <!-- Step 1: Enter email -->
+                        <div id="bz-forgot-step-input">
+                            <div class="bz-email-form-header">
+                                <button id="bz-forgot-back-btn" class="bz-form-back-btn" aria-label="Back">
+                                    <i class="fas fa-arrow-left"></i>
+                                </button>
+                                <span>Reset Password</span>
+                            </div>
+
+                            <p>Enter the email address you registered with. We'll send a reset link to your inbox. <span
+                                    class="bz-text-muted-inline">Check your spam folder if you don't see it.</span></p>
+
+                            <div class="bz-field-wrap">
+                                <label class="bz-field-label" for="bz-forgot-email">
+                                    <i class="fas fa-envelope"></i> Email Address
+                                </label>
+                                <input id="bz-forgot-email" class="bz-field-input" type="email"
+                                    placeholder="yourname@gmail.com" autocomplete="email" spellcheck="false" />
+                            </div>
+
+                            <div id="bz-forgot-error" class="bz-form-error" style="display:none;"></div>
+
+                            <button id="bz-forgot-submit-btn" class="bz-form-submit-btn">
+                                <i class="fas fa-paper-plane"></i> Send Reset Link
+                            </button>
+
+                            <p class="bz-form-switch-text">
+                                Remembered it?
+                                <button type="button" class="bz-form-link-btn"
+                                    onclick="document.getElementById('bz-show-signin-btn').click()">Sign in</button>
+                            </p>
+                        </div>
+
+                        <!-- Step 2: Email sent -->
+                        <div id="bz-forgot-step-sent" class="bz-hidden">
+                            <div class="bz-step-icon bz-step-icon--purple">
+                                <i class="fas fa-envelope-open-text"></i>
+                            </div>
+                            <h3>Check Your Inbox</h3>
+                            <p>A reset link has been sent to your email address. <span
+                                    class="bz-text-muted-inline">Check your spam folder if you don't see it.</span></p>
+                            <p class="bz-text-dim-sm">
+                                Click the link in the email — after resetting, click <strong
+                                    class="bz-text-subtle-strong">Back to Sign In</strong> to sign in with your
+                                new password.
+                            </p>
+                            <button type="button" class="bz-form-submit-btn" id="bz-forgot-goto-signin"
+                                class="bz-btn--purple-gradient">
+                                <i class="fas fa-sign-in-alt"></i> Back to Sign In
+                            </button>
+                        </div>
+
+                        <!-- Step 3: Set new password -->
+                        <div id="bz-forgot-step-reset" class="bz-hidden">
+                            <div class="bz-email-form-header">
+                                <span>Set New Password</span>
+                            </div>
+
+                            <p>Enter a new password for your BeatZen account.</p>
+
+                            <div class="bz-field-wrap">
+                                <label class="bz-field-label" for="bz-reset-password">
+                                    <i class="fas fa-lock"></i> New Password
+                                </label>
+                                <input id="bz-reset-password" class="bz-field-input" type="password"
+                                    placeholder="At least 6 characters" autocomplete="new-password" />
+                            </div>
+
+                            <div class="bz-field-wrap">
+                                <label class="bz-field-label" for="bz-reset-password-confirm">
+                                    <i class="fas fa-lock"></i> Confirm Password
+                                </label>
+                                <input id="bz-reset-password-confirm" class="bz-field-input" type="password"
+                                    placeholder="Repeat new password" autocomplete="new-password" />
+                            </div>
+
+                            <div id="bz-reset-error" class="bz-form-error" style="display:none;"></div>
+
+                            <button id="bz-reset-submit-btn" class="bz-form-submit-btn">
+                                <i class="fas fa-key"></i> Set New Password
+                            </button>
+                        </div>
+
+                        <!-- Step 4: Success -->
+                        <div id="bz-forgot-step-done" class="bz-hidden">
+                            <div class="bz-step-icon bz-step-icon--success">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <h3>Password Changed Successfully</h3>
+                            <p>
+                                Use your <strong class="bz-text-accent-purple">new password</strong> to sign in to
+                                BeatZen.
+                            </p>
+                            <button type="button" class="bz-form-submit-btn" id="bz-forgot-done-signin-btn"
+                                class="bz-btn--success-gradient">
+                                <i class="fas fa-sign-in-alt"></i> Go to Sign In
+                            </button>
+                        </div>
+
+                    </div><!-- end forgot password form -->
+
+                </div><!-- end bz-auth-signedout -->
+
+                <div id="bz-auth-signedin" class="bz-auth-card bz-auth-card--in">
+
+                    <div class="bz-auth-header-row">
+
+                        <img id="bz-auth-avatar" class="bz-auth-avatar" src="" alt="Profile">
+
+                        <div class="bz-auth-user-info">
+                            <div id="bz-auth-name" class="bz-auth-name"></div>
+                            <div id="bz-auth-email" class="bz-auth-email"></div>
+                            <div class="bz-auth-sync-status">
+                                <span id="bz-sync-status-text"></span>
+                            </div>
+                        </div>
+
+                        <button id="bz-google-signout-btn" class="stg-action-btn stg-btn--danger">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                        </button>
+                    </div>
+
+                </div><!-- end bz-auth-signedin -->
+
+            </div><!-- end stg-account-section -->
+
+            <!-- Wrapper still toggled by JS via #bz-sync-section -->
+            <div id="bz-sync-section" style="display:none;">
+
+                <!-- Settings content — hidden until signed in -->
+                <div id="bz-settings-locked" style="display:none;">
+
+                    <div class="stg-section">
+                        <div class="stg-section-label"><i class="fas fa-bell"></i> Updates</div>
+                        <button type="button" class="setting-item bz-updates-item" id="bz-updates-open-btn"
+                            aria-label="Open Updates">
+                            <div class="stg-icon-wrap stg-icon--purple"><i class="fas fa-bell"></i></div>
+                            <div class="setting-text">
+                                <h4>What's New</h4>
+                                <p>See the latest app updates and announcements</p>
+                            </div>
+                            <span class="bz-updates-chevron"><i class="fas fa-chevron-right"></i></span>
+                        </button>
+                    </div>
+
+                    <div class="stg-section">
+                        <div class="stg-section-label"><i class="fas fa-sliders-h"></i> Preferences</div>
+                        <div class="setting-item">
+                            <div class="stg-icon-wrap stg-icon--purple"><i class="fas fa-moon"></i></div>
+                            <div class="setting-text">
+                                <h4>Dark Mode</h4>
+                                <p>Full black &amp; white theme</p>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="dark-mode-toggle"><span
+                                    class="slider"></span></label>
+                        </div>
+                        <!-- Scheduled Dark Mode — unified card -->
+                        <div class="setting-item sdm-setting-item" id="schedule-dm-toggle-row">
+                            <div class="stg-icon-wrap stg-icon--purple"><i class="fas fa-clock"></i></div>
+                            <div class="setting-text">
+                                <h4>Scheduled Dark Mode</h4>
+                                <p id="schedule-dm-status-text">Auto-enable dark mode on a schedule</p>
+                                <!-- Active pill: merges "Schedule is active" label + time range, 50% width -->
+                                <span id="sdm-active-pill" style="display:none;
+                                align-items:center;gap:6px;margin-top:5px;
+                                max-width:50%;
+                                font-size:0.71rem;font-weight:700;letter-spacing:0.02em;
+                                background:linear-gradient(135deg,#7c3aed,#4f46e5);
+                                color:#fff;padding:4px 10px;border-radius:20px;
+                                box-shadow:0 2px 8px rgba(124,58,237,0.45);
+                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    <i class="fas fa-circle"
+                                        style="font-size:0.42rem;color:#a5f3fc;flex-shrink:0;animation:sdm-blink 1.4s ease-in-out infinite;"></i>
+                                    <span style="flex-shrink:0;opacity:0.78;font-weight:600;font-size:0.68rem;">Schedule
+                                        is
+                                        active</span>
+                                    <span style="flex-shrink:0;opacity:0.45;font-size:0.62rem;">·</span>
+                                    <span id="sdm-active-pill-text"
+                                        style="flex-shrink:1;overflow:hidden;text-overflow:ellipsis;">Daily · 12:00 AM –
+                                        6:00 AM</span>
+                                </span>
+                            </div>
+                            <!-- Collapse / Expand btn with helper label so user knows it controls -->
+                            <button class="sdm-collapse-btn sdm-collapse-btn--hidden" id="sdm-collapse-btn"
+                                aria-label="Toggle schedule controls">
+                                <i class="fas fa-chevron-up"></i>
+                                <span class="sdm-collapse-label" id="sdm-collapse-label">Edit</span>
+                            </button>
+                            <label class="switch"><input type="checkbox" id="schedule-dm-toggle"><span
+                                    class="slider"></span></label>
+                        </div>
+
+                        <!-- Schedule Panel (hidden until toggle is on) -->
+                        <div id="schedule-dm-panel" class="schedule-dm-panel" style="display:none;">
+
+                            <!-- Collapsible body (no separate header) -->
+                            <div class="sdm-panel-body" id="sdm-panel-body">
+
+                                <!-- Day selector -->
+                                <div class="schedule-dm-row">
+                                    <span class="schedule-dm-label"><i class="fas fa-calendar-days"></i> Days</span>
+                                    <div class="schedule-day-chips" id="schedule-day-chips">
+                                        <button class="sdm-day-chip sdm-day-all" data-day="daily">Daily</button>
+                                        <button class="sdm-day-chip" data-day="1">Mon</button>
+                                        <button class="sdm-day-chip" data-day="2">Tue</button>
+                                        <button class="sdm-day-chip" data-day="3">Wed</button>
+                                        <button class="sdm-day-chip" data-day="4">Thu</button>
+                                        <button class="sdm-day-chip" data-day="5">Fri</button>
+                                        <button class="sdm-day-chip" data-day="6">Sat</button>
+                                        <button class="sdm-day-chip" data-day="0">Sun</button>
+                                    </div>
+                                </div>
+
+                                <!-- Time pickers — manual inputs -->
+                                <div class="schedule-dm-times">
+                                    <!-- Turn ON time -->
+                                    <div class="schedule-dm-time-block">
+                                        <span class="schedule-dm-time-label"><i class="fas fa-moon"></i> Turn On</span>
+                                        <div class="sdm-manual-inputs" id="sdm-on-wheels">
+                                            <input class="sdm-time-input" id="sdm-on-hr-input" type="text"
+                                                inputmode="numeric" maxlength="2" placeholder="12"
+                                                aria-label="Turn on hour">
+                                            <span class="sdm-manual-colon">:</span>
+                                            <input class="sdm-time-input" id="sdm-on-min-input" type="text"
+                                                inputmode="numeric" maxlength="2" placeholder="00"
+                                                aria-label="Turn on minute">
+                                            <button class="sdm-ampm-toggle" id="sdm-on-ampm-btn"
+                                                aria-label="Toggle AM/PM">AM</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="schedule-dm-arrow"><i class="fas fa-arrow-right"></i></div>
+
+                                    <!-- Turn OFF time -->
+                                    <div class="schedule-dm-time-block">
+                                        <span class="schedule-dm-time-label"><i class="fas fa-sun"></i> Turn Off</span>
+                                        <div class="sdm-manual-inputs" id="sdm-off-wheels">
+                                            <input class="sdm-time-input" id="sdm-off-hr-input" type="text"
+                                                inputmode="numeric" maxlength="2" placeholder="07"
+                                                aria-label="Turn off hour">
+                                            <span class="sdm-manual-colon">:</span>
+                                            <input class="sdm-time-input" id="sdm-off-min-input" type="text"
+                                                inputmode="numeric" maxlength="2" placeholder="00"
+                                                aria-label="Turn off minute">
+                                            <button class="sdm-ampm-toggle" id="sdm-off-ampm-btn"
+                                                aria-label="Toggle AM/PM">AM</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Active status badge -->
+                                <div class="schedule-dm-active-badge" id="schedule-dm-active-badge"
+                                    style="display:none;">
+                                    <i class="fas fa-circle-check"></i> <span id="schedule-dm-badge-text">Dark mode
+                                        active
+                                        via schedule</span>
+                                </div>
+
+                                <!-- Set Schedule button -->
+                                <button id="sdm-set-schedule-btn" class="sdm-set-schedule-btn">
+                                    <i class="fas fa-calendar-check"></i> Set Schedule
+                                </button>
+
+                            </div><!-- /sdm-panel-body -->
+                        </div>
+                        <!-- /Scheduled Dark Mode -->
+
+                        <div class="setting-item">
+                            <div class="stg-icon-wrap stg-icon--blue"><i class="fas fa-history"></i></div>
+                            <div class="setting-text">
+                                <h4>Play History</h4>
+                                <p>Show Listen Again section in Playlists</p>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="history-toggle"><span
+                                    class="slider"></span></label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="stg-icon-wrap stg-icon--pink"><i class="fas fa-wand-magic-sparkles"></i></div>
+                            <div class="setting-text">
+                                <h4>Auto Mix</h4>
+                                <p>Auto-fills your queue with songs based on listening signals</p>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="automix-toggle"><span
+                                    class="slider"></span></label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="stg-icon-wrap stg-icon--teal"><i class="fas fa-keyboard"></i></div>
+                            <div class="setting-text">
+                                <h4>Keyboard Shortcuts</h4>
+                                <p>Enable hotkeys for playback control</p>
+                            </div>
+                            <div class="bz-shortcuts-row">
+                                <button id="view-shortcuts-btn" style="display:none;"><i class="fas fa-list"></i>
+                                    View</button>
+                                <label class="switch"><input type="checkbox" id="shortcuts-toggle"><span
+                                        class="slider"></span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><i class="fas fa-database"></i> Data &amp; Privacy</div>
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--orange"><i class="fas fa-clock-rotate-left"></i></div>
+                        <div class="setting-text">
+                            <h4>Clear Play History</h4>
+                            <p>Clears Listen Again section in Playlists</p>
+                        </div>
+                        <button id="clear-history-btn" class="stg-action-btn stg-btn--danger"><i
+                                class="fas fa-trash-alt"></i> Clear</button>
+                    </div>
+
+                    <!-- C6 FIX: Recent Searches toggle -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--blue"><i class="fas fa-clock-rotate-left"></i></div>
+                        <div class="setting-text">
+                            <h4>Recent Searches</h4>
+                            <p>Show your recent search queries in the search bar</p>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="recent-searches-toggle"><span
+                                class="slider"></span></label>
+                    </div>
+
+                    <!-- C1 FIX: Export Data button -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--green"><i class="fas fa-file-export"></i></div>
+                        <div class="setting-text">
+                            <h4>Export Data</h4>
+                            <p>Download a backup of your playlists, history &amp; settings</p>
+                        </div>
+                        <button id="export-data-btn" class="stg-action-btn stg-btn--green"><i
+                                class="fas fa-download"></i>
+                            Export</button>
+                    </div>
+
+                    <!-- C2 FIX: Import Data button + hidden file input -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--purple"><i class="fas fa-file-import"></i></div>
+                        <div class="setting-text">
+                            <h4>Import Data</h4>
+                            <p>Restore from a previously exported Beat Zen backup file</p>
+                        </div>
+                        <button id="import-data-btn" class="stg-action-btn stg-btn--blue"><i class="fas fa-upload"></i>
+                            Import</button>
+                        <input type="file" id="data-file-input" accept=".json" style="display:none;">
+                    </div>
+
+                    <!-- C3 FIX: Delete All Playlists + Restore — logic existed but no UI -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--orange"><i class="fas fa-list-ul"></i></div>
+                        <div class="setting-text">
+                            <h4>Delete All Playlists</h4>
+                            <p>Remove all your saved &amp; created playlists (restorable this session)</p>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-shrink:0;">
+                            <button id="restore-playlists-btn" class="stg-action-btn stg-btn--green"
+                                style="display:none;"><i class="fas fa-rotate-left"></i> Restore</button>
+                            <button id="delete-playlists-btn" class="stg-action-btn stg-btn--danger"><i
+                                    class="fas fa-trash-alt"></i> Delete All</button>
+                        </div>
+                    </div>
+
+                    <!-- C4 FIX: Remove Explore Playlists + Restore — logic existed but no UI -->
+                    <div class="setting-item">
+                        <div class="stg-icon-wrap stg-icon--pink"><i class="fas fa-compact-disc"></i></div>
+                        <div class="setting-text">
+                            <h4>Remove Explore Playlists</h4>
+                            <p>Clear daily &amp; generated playlists from the Playlists tab (restorable this session)
+                            </p>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-shrink:0;">
+                            <button id="restore-explore-btn" class="stg-action-btn stg-btn--green"
+                                style="display:none;"><i class="fas fa-rotate-left"></i> Restore</button>
+                            <button id="remove-explore-btn" class="stg-action-btn stg-btn--danger"><i
+                                    class="fas fa-xmark"></i> Remove</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Install App setting ── -->
+                <div class="stg-section" id="bz-install-setting-section">
+                    <div class="stg-section-label"><i class="fas fa-mobile-alt"></i> App</div>
+
+                    <!-- Install row: swaps between an "Install" button and a plain "App -->
+                    <div class="setting-item" id="bz-install-setting-item">
+                        <div class="stg-icon-wrap stg-icon--blue" id="bz-install-setting-icon"><i
+                                class="fas fa-download"></i></div>
+                        <div class="setting-text">
+                            <h4 id="bz-install-setting-title">Install Beat Zen</h4>
+                            <p id="bz-install-setting-desc">Install the app for a faster, native experience</p>
+                        </div>
+                        <button id="bz-settings-install-btn" class="stg-action-btn stg-btn--blue">
+                            <i class="fas fa-plus"></i> Install
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><i class="fas fa-info-circle"></i> About &amp; Features</div>
+                    <div class="stg-about-card">
+
+                        <!-- Always-visible header row -->
+                        <div class="stg-about-header">
+                            <div class="stg-about-left">
+                                <div class="stg-about-icon-box">
+                                    <i class="fas fa-music"></i>
+                                </div>
+                                <div class="stg-about-text-block">
+                                    <div class="stg-about-name">Beat Zen</div>
+                                    <div class="stg-about-tagline">Premium Music Experience</div>
+                                </div>
+                            </div>
+                            <button class="stg-know-more-btn" id="know-more-btn" onclick="toggleAboutDetails()">
+                                <span id="know-more-label">Know More</span>
+                                <i class="fas fa-chevron-down" id="know-more-icon"></i>
+                            </button>
+                        </div>
+
+                        <!-- Collapsible content -->
+                        <div class="stg-about-details" id="about-details">
+                            <p class="stg-about-desc">
+                                <strong>Beat</strong> — the heart of every song we offer.
+                                <strong>Zen</strong> — the simplicity and focus of everything we build.
+                                Crafted with pure web technology for a smooth, distraction-free listening experience on
+                                every device.
+                            </p>
+                            <div class="stg-features-label">What makes Beat Zen different</div>
+                            <div class="stg-features-grid">
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-calendar-alt"></i><span>Yearly Browse Albums</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-moon"></i><span>Sleep Timer</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-share-nodes"></i><span>Shareable Song Cards</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-clock"></i><span>Scheduled Dark Mode</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-infinity"></i><span>Beat Zen Universe (Year wise Playlists)</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-keyboard"></i><span>Keyboard Shortcuts</span>
+                                </div>
+                                <div class="stg-feature-chip">
+                                    <i class="fas fa-envelope"></i><span>Song Requests &amp; Feedback</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="stg-section">
+                    <div class="stg-section-label"><i class="fas fa-envelope"></i> Get in Touch</div>
+                    <div class="stg-contact-card">
+                        <!-- Header row matching About & Features style -->
+                        <div class="stg-about-header">
+                            <div class="stg-about-left">
+                                <div class="stg-about-icon-box"
+                                    style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 3px 10px rgba(245,158,11,0.35);">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div class="stg-about-text-block">
+                                    <div class="stg-about-name">Have any queries, song requests, or want to share
+                                        feedback?</div>
+                                    <div class="stg-about-tagline">We Would Love to Hear From You</div>
+                                </div>
+                            </div>
+                            <button class="stg-know-more-btn" id="contact-us-btn" onclick="toggleContactDetails()">
+                                <span id="contact-us-label">Contact Us</span>
+                                <i class="fas fa-chevron-down" id="contact-us-icon"></i>
+                            </button>
+                        </div>
+
+                        <!-- Collapsible contact content -->
+                        <div class="stg-about-details stg-contact-details" id="contact-details">
+                            <form id="contact-form" class="contact-form" action="https://formspree.io/f/mqezdgly"
+                                method="POST">
+                                <label for="contact-name">Full Name <span class="stg-required">*</span></label>
+                                <input type="text" name="name" id="contact-name" placeholder="Enter your name" required>
+                                <label for="contact-email">Email Address <span class="stg-required">*</span></label>
+                                <input type="email" name="email" id="contact-email"
+                                    placeholder="Enter valid email for replies" required>
+                                <label for="contact-mobile">Mobile Number <span
+                                        class="stg-optional">(Optional)</span></label>
+                                <input type="tel" name="mobile" id="contact-mobile"
+                                    placeholder="Enter no. for quick response">
+                                <label for="contact-message">Message <span class="stg-required">*</span></label>
+                                <textarea name="message" id="contact-message" rows="5"
+                                    placeholder="How can we help you?" required></textarea>
+                                <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Send
+                                    Message</button>
+                            </form>
+                        </div><!-- end stg-contact-details collapsible -->
+                    </div>
+                </div><!-- end Contact stg-section -->
+            </div><!-- end bz-settings-locked -->
+        </section>
+
+        <!-- Profile page -->
+        <section id="profile-container" class="profile-container" style="display:none;">
+            <div class="bz-profile-page-nav-bar">
+                <button class="bz-back-btn bz-profile-page-back-btn" id="bz-profile-back-btn" aria-label="Go back">
+                    <i class="fas fa-arrow-left"></i><span class="bz-back-label">Back</span>
+                </button>
+            </div>
+
+            <div class="bz-profile-page-card">
+                <div class="bz-profile-page-avatar-wrap">
+                    <img id="bz-profile-page-avatar" class="bz-profile-page-avatar" src="" alt="" style="display:none;">
+                    <div id="bz-profile-page-avatar-init" class="bz-profile-page-avatar-init" style="display:none;">
+                    </div>
+                </div>
+
+                <div id="bz-profile-page-name" class="bz-profile-page-name">Beat Zen User</div>
+                <div id="bz-profile-page-email" class="bz-profile-page-email"></div>
+
+                <div class="bz-profile-page-joined">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="bz-profile-page-joined-text">—</span>
+                </div>
+            </div>
+
+            <!-- Premium — moved here from the top-level nav. This is now the
+                 only entry point to the Premium screen; displayPremium()
+                 itself decides whether to show plans, pending, active or
+                 failed based on live status. -->
+            <button type="button" class="bz-profile-premium-card" id="bz-profile-premium-card"
+                aria-label="Open Premium">
+                <span class="bz-profile-premium-icon"><i class="fas fa-crown"></i></span>
+                <span class="bz-profile-premium-text">
+                    <span class="bz-profile-premium-heading">Beat Zen Premium</span>
+                    <span class="bz-profile-premium-sub" id="bz-profile-premium-sub">Unlock every feature</span>
+                </span>
+                <span class="bz-profile-premium-chevron"><i class="fas fa-chevron-right"></i></span>
+            </button>
+
+            <!-- Account actions -->
+            <div class="bz-profile-actions">
+                <div id="bz-profile-admin-entry-container"></div>
+                <button id="bz-profile-signout-btn" class="stg-action-btn stg-btn--danger bz-profile-signout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Sign Out
+                </button>
+            </div>
+        </section>
+
+        <section id="album-view-container" class="album-view-container" style="display:none;">
+            <div id="album-main-content" class="album-main-content"></div>
+        </section>
+    </main>
+
+    <audio id="audio-player" src="" preload="none"></audio>
+
+    <div class="player" id="main-player" role="region" aria-label="Music Player Controls"
+        style="transform:translateY(110%);pointer-events:none;">
+        <button id="minimize-btn" class="minimize-btn" title="Minimize" aria-label="Exit Fullscreen"><i
+                class="fas fa-chevron-down"></i></button>
+
+        <button id="fs-lyrics-btn" class="fs-lyrics-btn" title="Lyrics" aria-label="Show Lyrics"><i
+                class="fas fa-align-left"></i></button>
+        <button id="fs-share-btn" class="fs-share-btn" title="Share" aria-label="Share Song"><i
+                class="fas fa-share-nodes"></i></button>
+        <button id="fs-menu-btn" class="fs-menu-btn" title="More Options" aria-label="More Options"><i
+                class="fas fa-ellipsis-v"></i></button>
+        <div id="fs-menu-dropdown" class="fs-menu-dropdown" role="menu" aria-hidden="true">
+            <button id="fs-goto-album-btn" class="fs-menu-item" role="menuitem"><i
+                    class="fas fa-compact-disc"></i><span>Go to Album</span></button>
+            <button id="fs-goto-playlist-btn" class="fs-menu-item" role="menuitem" style="display:none;"><i
+                    class="fas fa-list-ul"></i><span>Go to Playlist</span></button>
+        </div>
+
+        <div class="player-content">
+            <div class="player-left" aria-label="Song Details">
+                <div class="player-album-container">
+                    <div id="player-header-stack" class="player-header-stack">
+                        <div id="header-playing-from" class="header-label"></div>
+                        <div id="header-movie-name" class="header-movie"></div>
+                    </div>
+                    <img id="player-album-cover" class="player-album-cover"
+                        src="https://res.cloudinary.com/beatzenapp/image/upload/v1782654641/Logo_kmpfjf.jpg"
+                        alt="Current Album Artwork" loading="eager">
+                </div>
+                <div class="player-info">
+                    <div id="player-song-title" class="song-title">Select a song to play</div>
+                    <div id="player-song-artist" class="song-artist"></div>
+                </div>
+            </div>
+
+            <div class="player-middle">
+                <div class="player-controls-top">
+                    <button id="shuffle-btn" title="Shuffle" aria-label="Toggle Shuffle Mode"><i
+                            class="fas fa-random"></i></button>
+                    <button id="prev-btn" title="Previous" aria-label="Play Previous Song"><i
+                            class="fas fa-step-backward"></i></button>
+                    <button id="play-pause-btn" title="Play/Pause" aria-label="Toggle Play and Pause"><i
+                            class="fas fa-play"></i></button>
+                    <button id="next-btn" title="Next" aria-label="Play Next Song"><i
+                            class="fas fa-step-forward"></i></button>
+                    <button id="loop-btn" title="Repeat" aria-label="Toggle Repeat Mode"><i
+                            class="fas fa-repeat"></i></button>
+                </div>
+            </div>
+            <div class="player-right">
+                <div class="timer-btn-container">
+                    <button id="timer-btn" title="Sleep Timer" aria-label="Open Sleep Timer"><i
+                            class="fas fa-moon"></i></button>
+                </div>
+                <button id="bz-queue-open-btn" title="Queue" aria-label="Open Playback Queue"><i
+                        class="fas fa-list-ul"></i></button>
+                <button id="mini-play-pause-btn" class="mini-play-pause-btn" title="Play/Pause"
+                    aria-label="Toggle Play and Pause"><i class="fas fa-play"></i></button>
+                <button id="maximize-btn" title="Full Screen" aria-label="Maximize Player"><i
+                        class="fas fa-expand"></i></button>
+            </div>
+        </div>
+
+        <div class="progress-container" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <span id="current-time">0:00</span>
+            <div id="progress-bar" class="progress-bar" aria-label="Music Progress Slider">
+                <div id="progress" class="progress"></div>
+            </div>
+            <span id="duration">0:00</span>
+        </div>
+    </div>
+
+    <div id="delete-confirm-popup" class="timer-popup" style="display: none;">
+        <div class="timer-popup-content">
+            <h3>Delete Playlist?</h3>
+            <p>Are you sure you want to remove this imported playlist? This action cannot be undone.</p>
+            <div class="bz-popup-btn-group">
+                <button id="confirm-delete-btn">Delete</button>
+                <button id="cancel-delete-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="timer-popup" class="timer-popup" aria-hidden="true">
+        <div class="timer-popup-content">
+            <button id="close-timer-popup" class="close-popup-btn" aria-label="Close Timer Menu"><i
+                    class="fas fa-times"></i></button>
+
+            <!-- Stars decoration layer -->
+            <div class="bz-timer-stars" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+
+            <!-- Header -->
+            <div class="bz-timer-header">
+                <div class="bz-timer-moon-wrap">
+                    <i class="fas fa-moon bz-timer-moon-icon"></i>
+                    <div class="bz-timer-moon-glow"></div>
+                </div>
+                <h3>Set Sleep Timer</h3>
+                <p id="bz-timer-sub" class="bz-timer-subtitle">Choose your sleep duration</p>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="bz-timer-presets">
+                <button class="bz-preset-btn" data-seconds="900" aria-label="15 minutes">
+                    <span class="bz-preset-num">15</span><span class="bz-preset-unit">min</span>
+                </button>
+                <button class="bz-preset-btn" data-seconds="1800" aria-label="30 minutes">
+                    <span class="bz-preset-num">30</span><span class="bz-preset-unit">min</span>
+                </button>
+                <button class="bz-preset-btn" data-seconds="2700" aria-label="45 minutes">
+                    <span class="bz-preset-num">45</span><span class="bz-preset-unit">min</span>
+                </button>
+                <button class="bz-preset-btn" data-seconds="3600" aria-label="60 minutes">
+                    <span class="bz-preset-num">60</span><span class="bz-preset-unit">min</span>
+                </button>
+            </div>
+
+            <!-- Confirmation panel — shown after a preset is tapped -->
+            <div id="bz-preset-confirm" class="bz-preset-confirm" style="display:none;">
+                <div class="bz-confirm-icon">
+                    <i class="fas fa-moon"></i>
+                    <div class="bz-confirm-icon-ring"></div>
+                </div>
+                <p class="bz-confirm-label">Falling asleep in</p>
+                <p class="bz-confirm-duration" id="bz-confirm-duration">30 minutes</p>
+                <div class="bz-confirm-actions">
+                    <button id="bz-confirm-start-btn" class="bz-confirm-start">
+                        <i class="fas fa-moon"></i> Start Timer
+                    </button>
+                    <button id="bz-confirm-back-btn" class="bz-confirm-back">
+                        <i class="fas fa-arrow-left"></i> Go Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- OR divider + Choose Manually -->
+            <div id="bz-timer-or-section" class="bz-timer-or-section">
+                <div class="bz-timer-divider"><span>OR</span></div>
+                <p class="bz-choose-manual-label"><i class="fas fa-keyboard"></i> Enter Manually</p>
+            </div>
+
+            <!-- Manual Input (Hours & Minutes) -->
+            <div class="timer-columns-container">
+                <div class="column-wrapper">
+                    <span class="column-label">Hours</span>
+                    <div class="bz-time-input-wrap">
+                        <input id="timer-input-hours" class="bz-time-input" type="number" min="0" max="24"
+                            placeholder="00" inputmode="numeric" autocomplete="off" aria-label="Hours" />
+                    </div>
+                </div>
+                <div class="bz-wheel-sep">:</div>
+                <div class="column-wrapper">
+                    <span class="column-label">Mins</span>
+                    <div class="bz-time-input-wrap">
+                        <input id="timer-input-mins" class="bz-time-input" type="number" min="0" max="60"
+                            placeholder="00" inputmode="numeric" autocomplete="off" aria-label="Minutes" />
+                    </div>
+                </div>
+            </div>
+            <!-- Inline validation hint -->
+            <div id="bz-timer-input-hint" class="bz-timer-input-hint" aria-live="polite" style="display:none;"></div>
+
+            <!-- Running Countdown Display -->
+            <div class="timer-display-container">
+                <span id="timer-display"></span>
+                <div class="bz-timer-display-glow"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div id="timer-buttons" class="timer-buttons">
+                <button id="start-timer-btn" aria-label="Start Timer">
+                    <i class="fas fa-moon"></i> Start Sleep Timer
+                </button>
+                <button id="cancel-timer-btn" style="display: none;" aria-label="Cancel Timer">
+                    <i class="fas fa-times-circle"></i> Cancel Timer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="success-popup" class="success-popup" style="display: none;" aria-live="polite">
+        <div class="bz-success-icon"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
+        <p>Your message has been submitted successfully.</p>
+        <button id="close-success-popup" aria-label="Close Success Message">OK</button>
+    </div>
+
+    <div id="timer-ended-popup" class="timer-ended-popup" aria-live="assertive">
+        <div class="bz-ended-icon-wrap">
+            <i class="fas fa-moon bz-ended-moon"></i>
+            <div class="bz-ended-rings">
+                <div class="bz-ended-ring bz-ended-ring--1"></div>
+                <div class="bz-ended-ring bz-ended-ring--2"></div>
+            </div>
+        </div>
+        <h3>Sleep Well</h3>
+        <p>Your music has faded into the night.</p>
+        <button id="close-timer-ended" aria-label="Close Timer Alert">
+            <i class="fas fa-check"></i> Got it
+        </button>
+    </div>
+
+    <div id="playlist-modal" class="timer-popup bz-modal--top" style="display: none;">
+        <div class="timer-popup-content">
+            <button id="close-playlist-modal" class="close-popup-btn" onclick="closePlaylistModal()"><i
+                    class="fas fa-times"></i></button>
+            <h3 id="modal-song-title">Select a Song</h3>
+            <div id="modal-main-options" class="timer-buttons">
+                <button id="modal-create-btn" onclick="showCreatePlaylistUI()"><i class="fas fa-plus"></i> Create New
+                    Playlist</button>
+                <button id="modal-add-to-btn" onclick="showAddToPlaylistUI()"><i class="fas fa-list"></i> Add to
+                    Existing Playlist</button>
+                <button id="modal-play-next-btn"><i class="fas fa-forward-step"></i> Play Next</button>
+                <button id="modal-add-end-btn"><i class="fas fa-list-ul"></i> Add to End of Queue</button>
+                <button id="modal-fav-btn" type="button"><i class="far fa-heart bz-fav-modal-icon"></i><span
+                        id="modal-fav-btn-label">Add to Favourites</span></button>
+                <button id="modal-remove-from-playlist-btn" style="display:none;"><i class="fas fa-trash-alt"></i>
+                    Remove from Playlist</button>
+                <button id="modal-remove-history-btn" style="display:none;"><i class="fas fa-trash-clock"></i> Remove
+                    from History</button>
+            </div>
+            <div id="modal-create-ui">
+                <input type="text" id="new-playlist-name" placeholder="Enter playlist name...">
+                <div class="timer-buttons">
+                    <button id="confirm-create-btn">Confirm</button>
+                    <button onclick="backToModalMain()">Cancel</button>
+                </div>
+            </div>
+            <div id="modal-list-ui">
+                <div id="existing-playlists-list"></div>
+                <button id="back-to-main-btn" onclick="backToModalMain()"><i class="fas fa-arrow-left"></i>
+                    Back</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bz-queue-fullscreen" class="bz-queue-overlay">
+        <div class="bz-queue-back-row">
+            <button class="bz-back-btn" id="bz-queue-back-btn" aria-label="Go back">
+                <i class="fas fa-arrow-left"></i><span class="bz-back-label">Back</span>
+            </button>
+        </div>
+        <div class="bz-queue-header">
+            <div class="bz-queue-title-group">
+                <h1>Playback Queue</h1>
+                <p id="bz-queue-stats">Loading…</p>
+            </div>
+            <div class="bz-queue-actions">
+                <button id="bz-queue-save" class="bz-btn bz-btn--save" title="Save queue as playlist"><i
+                        class="fas fa-floppy-disk"></i><span>Save</span></button>
+                <button id="bz-queue-clear" class="bz-btn danger" title="Clear queue"><i
+                        class="fas fa-trash"></i><span>Clear</span></button>
+                <!-- Close button hidden -->
+                <button id="bz-queue-close" class="bz-close-btn" title="Close" style="display:none"><i
+                        class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div class="bz-now-playing">
+            <span class="bz-label">Now Playing</span>
+            <div id="bz-queue-active-container"></div>
+        </div>
+        <div class="bz-queue-body">
+            <span class="bz-label">Up Next</span>
+            <div id="bz-queue-list" class="bz-queue-list"></div>
+            <div id="bz-empty-state" class="bz-empty">
+                <i class="fas fa-music"></i>
+                <p>No songs in queue</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="bz-lyrics-fullscreen" class="bz-queue-overlay bz-lyrics-overlay">
+        <div class="bz-lyrics-top-row">
+            <button class="bz-back-btn" id="bz-lyrics-back-btn" aria-label="Go back">
+                <i class="fas fa-arrow-left"></i><span class="bz-back-label">Back</span>
+            </button>
+            <h1 class="bz-lyrics-heading">Lyrics</h1>
+        </div>
+
+        <div class="bz-lyrics-layout">
+            <div class="bz-lyrics-body">
+                <p id="bz-lyrics-subtitle">Now Playing</p>
+                <div id="bz-lyrics-state" class="bz-lyrics-state">
+                    <span class="bz-lyrics-state-icon-wrap" aria-hidden="true">
+                        <i id="bz-lyrics-state-icon" class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <p id="bz-lyrics-state-text">Fetching lyrics…</p>
+                    <button id="bz-lyrics-retry-btn" class="bz-lyrics-retry-btn"><i class="fas fa-rotate-right"></i> Try
+                        Again</button>
+
+                    <!-- Community Lyrics Fallback -->
+                    <div id="bz-lyrics-community" class="bz-lyrics-community">
+                        <h3 class="bz-lyrics-community-heading"><i class="fa-brands fa-google" aria-hidden="true"></i>
+                            Search Lyrics on Google</h3>
+                        <div class="bz-lyrics-community-copy-row">
+                            <code id="bz-lyrics-community-query" class="bz-lyrics-community-query"></code>
+                            <button id="bz-lyrics-community-copy-btn" class="bz-lyrics-community-copy-btn"
+                                title="Copy search text" aria-label="Copy search text">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+
+                        <button id="bz-lyrics-add-btn" class="bz-lyrics-add-btn" type="button">
+                            <i class="fas fa-plus"></i> Add Lyrics
+                        </button>
+
+                        <div id="bz-lyrics-add-form" class="bz-lyrics-add-form">
+                            <textarea id="bz-lyrics-add-textarea" class="bz-lyrics-add-textarea" maxlength="8000"
+                                placeholder="Paste or type the lyrics here…"></textarea>
+                            <div class="bz-lyrics-add-form-actions">
+                                <span id="bz-lyrics-add-error" class="bz-lyrics-add-error"></span>
+                                <button id="bz-lyrics-add-cancel-btn" class="bz-lyrics-add-cancel-btn"
+                                    type="button">Cancel</button>
+                                <button id="bz-lyrics-add-save-btn" class="bz-lyrics-add-save-btn" type="button"><i
+                                        class="fas fa-check"></i> Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="bz-lyrics-content" class="bz-lyrics-content"></div>
+            </div>
+
+            <!-- Right-side "now playing" panel — desktop/large-screen only (see CSS). -->
+            <aside class="bz-lyrics-side" id="bz-lyrics-side" aria-label="Now playing">
+                <div class="bz-lyrics-side-cover-wrap">
+                    <div id="bz-lyrics-side-movie" class="bz-lyrics-side-movie"></div>
+                    <img id="bz-lyrics-side-cover" class="bz-lyrics-side-cover" src="" alt="Album Artwork">
+                </div>
+                <div class="bz-lyrics-side-info">
+                    <div id="bz-lyrics-side-title" class="bz-lyrics-side-title"></div>
+                    <div id="bz-lyrics-side-artist" class="bz-lyrics-side-artist"></div>
+                </div>
+                <!-- BUG FIX: these 4 ids used to duplicate the main player's ids -->
+                <div class="progress-container" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                    <span id="bz-lyrics-current-time">0:00</span>
+                    <div id="bz-lyrics-progress-bar" class="progress-bar" aria-label="Music Progress Slider">
+                        <div id="bz-lyrics-progress" class="progress"></div>
+                    </div>
+                    <span id="bz-lyrics-duration">0:00</span>
+                </div>
+                <div class="bz-lyrics-mini-player">
+                    <button id="bz-lyrics-prev-btn" class="bz-lyrics-mini-btn" title="Previous" aria-label="Previous"><i
+                            class="fas fa-step-backward"></i></button>
+                    <button id="bz-lyrics-pp-btn" class="bz-lyrics-mini-btn bz-lyrics-mini-btn--play" title="Play/Pause"
+                        aria-label="Play/Pause"><i class="fas fa-play"></i></button>
+                    <button id="bz-lyrics-next-btn" class="bz-lyrics-mini-btn" title="Next" aria-label="Next"><i
+                            class="fas fa-step-forward"></i></button>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="toast-container">
+    </div>
+
+    <!-- Auth Gate -->
+    <div id="bz-auth-gate" role="dialog" aria-modal="true" aria-label="Sign in required">
+        <div class="bz-gate-card" data-active-panel="bz-gate-landing">
+
+            <!-- Brand -->
+            <div class="bz-gate-brand">
+                <img src="https://res.cloudinary.com/beatzenapp/image/upload/v1782654641/Logo_kmpfjf.jpg"
+                    alt="Beat Zen">
+                <span class="bz-gate-brand-name">Beat Zen</span>
+            </div>
+
+            <!-- Default landing — shown until user picks Sign Up or Sign In -->
+            <div id="bz-gate-landing">
+
+                <!-- Top navigation: logo left, Sign Up / Sign In right -->
+                <div class="bz-gate-navbar">
+                    <div class="bz-gate-nav-brand">
+                        <img src="https://res.cloudinary.com/beatzenapp/image/upload/v1782654641/Logo_kmpfjf.jpg"
+                            alt="Beat Zen">
+                        <span class="bz-gate-brand-name">Beat Zen</span>
+                    </div>
+                    <div class="bz-gate-nav-actions">
+                        <button class="bz-gate-signup-btn" id="bz-gate-signup-btn">
+                            <i class="fas fa-user-plus"></i><span>Sign Up</span>
+                        </button>
+                        <button class="bz-gate-signin-btn" id="bz-gate-signin-btn">
+                            <i class="fas fa-sign-in-alt"></i><span>Sign In</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- /.bz-gate-navbar -->
+
+                <!-- Feature showcase — compact chip list -->
+                <div class="bz-gate-features-section">
+
+                    <div class="bz-gate-divider"><span>What You Get</span></div>
+
+                    <div class="bz-premium-teaser-grid">
+                        <div class="bz-premium-teaser-chip"><i
+                                class="fas fa-calendar-alt bz-feat-orange"></i><span>Yearly Browse Albums</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-moon bz-feat-blue"></i><span>Sleep
+                                Timer</span></div>
+                        <div class="bz-premium-teaser-chip"><i
+                                class="fas fa-share-nodes bz-feat-green"></i><span>Shareable Song Cards</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-clock bz-feat-orange"></i><span>Scheduled
+                                Dark Mode</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-infinity bz-feat-blue"></i><span>Beat
+                                Zen Universe</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-keyboard bz-feat-green"></i><span>Keyboard
+                                Shortcuts</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-envelope bz-feat-red"></i><span>Song
+                                Requests &amp; Feedback</span></div>
+                        <div class="bz-premium-teaser-chip"><i class="fas fa-list-ul bz-feat-orange"></i><span>Unique
+                                Queue UI</span></div>
+                    </div>
+
+                </div>
+                <!-- /.bz-gate-features-section -->
+
+            </div>
+
+            <!-- ── Sign Up Form (inline in gate) ── -->
+            <div id="bz-gate-signup-form" style="display:none; width:100%;">
+                <div class="bz-email-form-header">
+                    <button class="bz-form-back-btn" id="bz-gate-signup-back" aria-label="Back">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <span>Create Account</span>
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-su-fullname"><i class="fas fa-user"></i> Full
+                        Name</label>
+                    <input id="bz-gate-su-fullname" class="bz-field-input" type="text" placeholder="Your full name"
+                        autocomplete="name" spellcheck="false" />
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-su-email"><i class="fas fa-envelope"></i> Email
+                        Address</label>
+                    <input id="bz-gate-su-email" class="bz-field-input" type="email" placeholder="yourname@gmail.com"
+                        autocomplete="email" spellcheck="false" />
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-su-password"><i class="fas fa-lock"></i> Password</label>
+                    <div class="bz-field-pw-wrap">
+                        <input id="bz-gate-su-password" class="bz-field-input" type="password"
+                            placeholder="Min 6 characters" autocomplete="new-password" />
+                        <button type="button" class="bz-pw-toggle" onclick="bzTogglePw('bz-gate-su-password',this)"
+                            tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-su-confirm"><i class="fas fa-lock"></i> Confirm
+                        Password</label>
+                    <div class="bz-field-pw-wrap">
+                        <input id="bz-gate-su-confirm" class="bz-field-input" type="password"
+                            placeholder="Repeat password" autocomplete="new-password" />
+                        <button type="button" class="bz-pw-toggle" onclick="bzTogglePw('bz-gate-su-confirm',this)"
+                            tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div id="bz-gate-su-error" class="bz-form-error" style="display:none;"></div>
+                <button id="bz-gate-su-submit" class="bz-form-submit-btn"><i class="fas fa-user-plus"></i> Create
+                    Account</button>
+                <p class="bz-form-switch-text">Already have an account?
+                    <button type="button" class="bz-form-link-btn" id="bz-gate-su-to-si">Sign in</button>
+                </p>
+            </div>
+
+            <!-- ── Sign In Form (inline in gate) ── -->
+            <div id="bz-gate-signin-form" style="display:none; width:100%;">
+                <div class="bz-email-form-header">
+                    <button class="bz-form-back-btn" id="bz-gate-signin-back" aria-label="Back">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <span>Sign In</span>
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-si-email"><i class="fas fa-envelope"></i> Email
+                        Address</label>
+                    <input id="bz-gate-si-email" class="bz-field-input" type="email" placeholder="yourname@gmail.com"
+                        autocomplete="email" spellcheck="false" />
+                </div>
+                <div class="bz-field-wrap">
+                    <label class="bz-field-label" for="bz-gate-si-password"><i class="fas fa-lock"></i> Password</label>
+                    <div class="bz-field-pw-wrap">
+                        <input id="bz-gate-si-password" class="bz-field-input" type="password"
+                            placeholder="Your password" autocomplete="current-password" />
+                        <button type="button" class="bz-pw-toggle" onclick="bzTogglePw('bz-gate-si-password',this)"
+                            tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div id="bz-gate-si-error" class="bz-form-error" style="display:none;"></div>
+                <div class="bz-forgot-link-row">
+                    <button type="button" id="bz-gate-si-forgot" class="bz-form-link-btn"><i class="fas fa-key"></i>
+                        Forgot password?</button>
+                </div>
+                <button id="bz-gate-si-submit" class="bz-form-submit-btn" disabled
+                    style="opacity:0.45;cursor:not-allowed;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+                <p class="bz-form-switch-text">Don't have an account?
+                    <button type="button" class="bz-form-link-btn" id="bz-gate-si-to-su">Sign up</button>
+                </p>
+            </div>
+
+            <!-- ── Forgot Password Form (inline in gate) ── -->
+            <div id="bz-gate-forgot-form" style="display:none; width:100%;">
+                <!-- Step 1: Enter email -->
+                <div id="bz-gate-forgot-step1">
+                    <div class="bz-email-form-header">
+                        <button class="bz-form-back-btn" id="bz-gate-forgot-back" aria-label="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <span>Reset Password</span>
+                    </div>
+                    <p>Enter the email you registered with. We'll send a reset link to your inbox.</p>
+                    <div class="bz-field-wrap">
+                        <label class="bz-field-label" for="bz-gate-fp-email"><i class="fas fa-envelope"></i> Email
+                            Address</label>
+                        <input id="bz-gate-fp-email" class="bz-field-input" type="email"
+                            placeholder="yourname@gmail.com" autocomplete="email" spellcheck="false" />
+                    </div>
+                    <div id="bz-gate-fp-error" class="bz-form-error" style="display:none;"></div>
+                    <button id="bz-gate-fp-submit" class="bz-form-submit-btn"><i class="fas fa-paper-plane"></i> Send
+                        Reset Link</button>
+                    <p class="bz-form-switch-text">Remembered it?
+                        <button type="button" class="bz-form-link-btn" id="bz-gate-fp-to-si">Sign in</button>
+                    </p>
+                </div>
+                <!-- Step 2: Email sent -->
+                <div id="bz-gate-forgot-step2" style="display:none;">
+                    <div class="bz-step-icon bz-step-icon--purple"><i class="fas fa-envelope-open-text"></i></div>
+                    <h3>Check Your Inbox</h3>
+                    <p>A reset link has been sent. Click it to reset your password, then come back here to sign in.</p>
+                    <button type="button" class="bz-form-submit-btn" id="bz-gate-fp-goto-si"><i
+                            class="fas fa-sign-in-alt"></i> Back to Sign In</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Firebase SDK — required for sign-in and cloud sync -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+
+    <!-- On-device OCR, used to auto-check payment screenshots (date / UPI name / amount) before submitting for admin review -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+    <!-- Generates the plan-aware UPI QR code on the Payment step -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
+    <!-- BUG FIX: script.js calls auth.js globals -->
+    <script src="auth.js" defer></script>
+    <script src="script.js?v=9" defer></script>
+
+    <!-- PWA install prompt + service worker -->
+</body>
+
+</html>
