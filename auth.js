@@ -106,6 +106,353 @@
         }).catch(function (e) { console.warn('Beat Zen: user doc sync failed', e); });
     }
 
+    /* ══════════════════════════════════════════════════════════════════
+       ADMIN-DASHBOARD FEED  (device recording + cloud sync upload)
+
+       The Admin Dashboard in script.js only READS:
+         • beatzen_sync/{uid}                    → stats, prefs, now-playing,
+                                                    history, favourites, "Last Synced"
+         • beatzen_users/{uid}/devices/{devId}   → the "Devices" section
+         • beatzen_users/{uid}.activeDevice*     → the "Active now" badge
+       and script.js calls window.bzImmediateUpload() / window.bzSilentUpload()
+       after settings changes and on every play / pause. Nothing in the app
+       defined those functions or wrote those documents, so the dashboard had
+       nothing to show. This block is the missing writer.
+
+       It only ever writes fields that firestore.rules already allows.
+       ══════════════════════════════════════════════════════════════════ */
+
+    // Set right before a real sign-in / sign-up so the auth-state handler can
+    // tell a fresh login (counts toward the device's sign-in total) from a
+    // returning visit that merely restored a saved session.
+    var _bzFreshSignIn = false;
+
+    function bzGetDeviceId() {
+        // Same key + format as _bzGetDeviceId() in script.js so both agree.
+        try {
+            var id = localStorage.getItem('bz_device_id');
+            if (!id) {
+                id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+                localStorage.setItem('bz_device_id', id);
+            }
+            return id;
+        } catch (_) { return 'dev_unknown'; }
+    }
+
+    function bzDetectDevice() {
+        var ua = navigator.userAgent || '';
+        var isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+        var isIPad = /iPad/i.test(ua) || isIPadOS;
+        var isIPhone = /iPhone|iPod/i.test(ua);
+
+        var os = 'Unknown';
+        if (/Android/i.test(ua)) os = 'Android';
+        else if (isIPad) os = 'iPadOS';
+        else if (isIPhone) os = 'iOS';
+        else if (/Windows/i.test(ua)) os = 'Windows';
+        else if (/CrOS/i.test(ua)) os = 'ChromeOS';
+        else if (/Mac OS X|Macintosh/i.test(ua)) os = 'macOS';
+        else if (/Linux/i.test(ua)) os = 'Linux';
+
+        var browser = 'Browser';
+        if (/Edg\//i.test(ua)) browser = 'Edge';
+        else if (/OPR\/|Opera/i.test(ua)) browser = 'Opera';
+        else if (/SamsungBrowser/i.test(ua)) browser = 'Samsung Internet';
+        else if (/Firefox\/|FxiOS/i.test(ua)) browser = 'Firefox';
+        else if (/Chrome\/|CriOS/i.test(ua)) browser = 'Chrome';
+        else if (/Safari\//i.test(ua)) browser = 'Safari';
+
+        var deviceType = 'desktop';
+        if (isIPad || (/Android/i.test(ua) && !/Mobile/i.test(ua))) deviceType = 'tablet';
+        else if (isIPhone || /Android|Mobile/i.test(ua)) deviceType = 'mobile';
+
+        // Android model, e.g. "SM-S918B". Chrome's reduced UA reports just "K".
+        var model = '';
+        var m = ua.match(/Android [\d.]+; ([^;)]+)/);
+        if (m && m[1]) {
+            var raw = m[1].replace(/\s*Build.*$/i, '').trim();
+            if (raw && raw !== 'K' && raw.length <= 60) model = raw;
+        }
+
+        return {
+            deviceId: bzGetDeviceId(),
+            deviceName: (browser + ' on ' + (model || os)).slice(0, 190),
+            deviceType: deviceType,
+            model: model,
+            os: os,
+            browser: browser,
+            userAgent: ua.slice(0, 480),
+            platform: (navigator.platform || '').slice(0, 90)
+        };
+    }
+
+    // Writes beatzen_users/{uid}/devices/{deviceId} and marks this device as
+    // the user's active one. Shapes match deviceFieldsOk() /
+    // activeDeviceFieldsOk() in firestore.rules exactly.
+    //
+    // NOTE: this only RECORDS the device. It does not sign other devices out.
+    function bzRecordDeviceLogin(user, isFreshSignIn) {
+        if (!user || !user.uid) return Promise.resolve();
+        var info = bzDetectDevice();
+        var ts = firebase.firestore.FieldValue.serverTimestamp();
+        var userRef = db.collection('beatzen_users').doc(user.uid);
+        var devRef = userRef.collection('devices').doc(info.deviceId);
+
+        return devRef.get().then(function (snap) {
+            var prev = snap.exists ? (snap.data() || {}) : null;
+            var prevCount = (prev && typeof prev.loginCount === 'number') ? prev.loginCount : 0;
+            var fields = {
+                deviceId: info.deviceId,
+                deviceName: info.deviceName,
+                deviceType: info.deviceType,
+                os: info.os,
+                browser: info.browser,
+                userAgent: info.userAgent,
+                platform: info.platform,
+                lastLoginAt: ts,
+                loginCount: Math.max(1, prevCount + ((isFreshSignIn || !prev) ? 1 : 0))
+            };
+            if (info.model) fields.model = info.model;
+            if (!prev) fields.firstLoginAt = ts;
+            return devRef.set(fields, { merge: true });
+        }).then(function () {
+            return userRef.get();
+        }).then(function (uSnap) {
+            var u = uSnap.exists ? (uSnap.data() || {}) : {};
+            // Only touch the user doc when the active device actually changes.
+            // (Every write to beatzen_users makes the admin user-list listener
+            // re-subscribe to every user's sync doc, so don't do it per visit.)
+            if (u.activeDeviceId === info.deviceId && !isFreshSignIn) return;
+            return userRef.set({
+                activeDeviceId: info.deviceId,
+                activeDeviceName: info.deviceName,
+                activeDeviceAt: ts
+            }, { merge: true });
+        }).catch(function (e) {
+            console.warn('Beat Zen: device record failed', e && e.code, e && e.message);
+        });
+    }
+    window.bzRecordDeviceLogin = bzRecordDeviceLogin;
+
+    /* ── Cloud sync upload → beatzen_sync/{uid} ────────────────────────── */
+    var BZ_SYNC_MIN_GAP_MS = 4000;      // never write more often than this
+    var BZ_SYNC_HEARTBEAT_MS = 120000;  // re-check for changes while visible
+    var BZ_SYNC_FIELD_MAX = 150000;     // skip any single JSON field bigger than this
+
+    var _syncEnabled = false;
+    var _syncTimer = null;
+    var _syncDue = 0;
+    var _syncForce = false;
+    var _syncInFlight = false;
+    var _syncLastWriteAt = 0;
+    var _syncLastSig = '';
+    var _syncHeartbeat = null;
+
+    function bzLsGet(key) {
+        try { return localStorage.getItem(key); } catch (_) { return null; }
+    }
+    function bzReadJSON(key, fallback) {
+        try {
+            var raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : fallback;
+        } catch (_) { return fallback; }
+    }
+    function bzParseDurationSec(d) {
+        if (typeof d === 'number' && isFinite(d)) return d;
+        if (typeof d !== 'string' || !d) return 0;
+        var parts = d.split(':').map(function (x) { return parseInt(x, 10); });
+        if (parts.some(function (x) { return isNaN(x); })) return 0;
+        var sec = 0;
+        parts.forEach(function (p) { sec = sec * 60 + p; });
+        return sec;
+    }
+    function bzTopKey(map) {
+        var best = '', bestN = 0;
+        Object.keys(map).forEach(function (k) { if (map[k] > bestN) { best = k; bestN = map[k]; } });
+        return best;
+    }
+    // Admin-facing timestamps are shown in IST (the app is India-focused);
+    // hard-coded so an admin isn't reading a user's local time by mistake.
+    function bzFormatIST(date) {
+        try {
+            return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) + ' IST';
+        } catch (_) { return date.toISOString(); }
+    }
+
+    // Lifetime counters live in localStorage (per account) because the app's
+    // own play history is capped at 100 entries. Each history entry newer than
+    // the last one already counted adds 1 song + its duration.
+    function bzComputeStats(uid, history) {
+        var key = 'bz_sync_stats_' + uid;
+        var s = bzReadJSON(key, null);
+        if (!s || typeof s !== 'object') s = { songs: 0, sec: 0, last: '' };
+        var last = s.last || '';
+        var newest = last;
+
+        var artists = {}, albums = {}, hours = {};
+        history.forEach(function (e) {
+            if (!e || typeof e.playedAt !== 'string') return;
+            if (e.playedAt > last) {
+                s.songs += 1;
+                s.sec += bzParseDurationSec(e.duration);
+                if (e.playedAt > newest) newest = e.playedAt;
+            }
+            if (e.artist) artists[e.artist] = (artists[e.artist] || 0) + 1;
+            var album = e.albumTitle || e.sourceName;
+            if (album) albums[album] = (albums[album] || 0) + 1;
+            var dt = new Date(e.playedAt);
+            if (!isNaN(dt.getTime())) {
+                var h = dt.getHours();
+                hours[h] = (hours[h] || 0) + 1;
+            }
+        });
+        s.last = newest;
+        try { localStorage.setItem(key, JSON.stringify(s)); } catch (_) { }
+
+        var peak = bzTopKey(hours);
+        var peakLabel = '';
+        if (peak !== '') {
+            var h24 = parseInt(peak, 10);
+            peakLabel = ((h24 % 12) || 12) + ' ' + (h24 < 12 ? 'AM' : 'PM');
+        }
+        return {
+            songs: s.songs,
+            minutes: Math.round(s.sec / 60),
+            topArtist: bzTopKey(artists),
+            topAlbum: bzTopKey(albums),
+            peakHour: peakLabel
+        };
+    }
+
+    // Field names are exactly what _bzRenderUserDetail() / bzLoadAdminUserList()
+    // in script.js read. Never put `undefined` in here — Firestore rejects it.
+    function bzBuildSyncPayload(user) {
+        var history = bzReadJSON('beatZen_history_auto', []);
+        if (!Array.isArray(history)) history = [];
+        var stats = bzComputeStats(user.uid, history);
+
+        var slimHistory = history.map(function (e) {
+            e = e || {};
+            return {
+                id: String(e.id || ''),
+                title: e.title || '',
+                artist: e.artist || '',
+                albumTitle: e.albumTitle || '',
+                sourceName: e.sourceName || '',
+                playedAt: e.playedAt || ''
+            };
+        });
+
+        var lastSignIn = '';
+        if (user.metadata && user.metadata.lastSignInTime) {
+            var d = new Date(user.metadata.lastSignInTime);
+            if (!isNaN(d.getTime())) lastSignIn = bzFormatIST(d);
+        }
+
+        var data = {
+            _displayName: user.displayName || bzLsGet('beatzen_fullName') || '',
+            _email: user.email || '',
+            _lastSignInAt: lastSignIn,
+            _deviceId: bzGetDeviceId(),
+            _totalSongsPlayed: stats.songs,
+            _totalListenMinutes: stats.minutes,
+            _topArtist: stats.topArtist,
+            _topMovie: stats.topAlbum,
+            _peakListenHour: stats.peakHour,
+            beatzen_dark_mode: bzLsGet('beatzen_dark_mode') || 'false',
+            beatZen_shuffle: bzLsGet('beatZen_shuffle') || 'false',
+            beatZen_loop: bzLsGet('beatZen_loop') || 'false',
+            beatzen_automix: bzLsGet('beatzen_automix') || 'false',
+            beatzen_history: bzLsGet('beatzen_history') || 'false',
+            beatZen_activeView: bzLsGet('beatZen_activeView') || '',
+            z_history: JSON.stringify(slimHistory)
+        };
+
+        var lastSong = bzLsGet('lastPlayedSong');
+        if (lastSong && lastSong.length <= BZ_SYNC_FIELD_MAX) data.lastPlayedSong = lastSong;
+
+        var favs = bzLsGet('beatZen_favourites');
+        if (favs && favs.length <= BZ_SYNC_FIELD_MAX) data.z_favourites = favs;
+
+        if (data.z_history.length > BZ_SYNC_FIELD_MAX) data.z_history = JSON.stringify(slimHistory.slice(0, 40));
+
+        return { data: data, sig: JSON.stringify(data) };
+    }
+
+    function bzFlushSync(force) {
+        _syncTimer = null;
+        _syncForce = false;
+        var user = auth.currentUser;
+        if (!_syncEnabled || !user) return;
+        if (_syncInFlight) { bzScheduleSync(1000, force); return; }
+
+        var built = bzBuildSyncPayload(user);
+        if (!force && built.sig === _syncLastSig) return; // nothing changed
+
+        _syncInFlight = true;
+        var data = built.data;
+        data._uploadedAt = firebase.firestore.FieldValue.serverTimestamp();
+        data._uploadedAtFormatted = bzFormatIST(new Date());
+
+        db.collection('beatzen_sync').doc(user.uid).set(data, { merge: true })
+            .then(function () {
+                _syncLastSig = built.sig;
+                _syncLastWriteAt = Date.now();
+            })
+            .catch(function (e) {
+                console.warn('Beat Zen: cloud sync upload failed', e && e.code, e && e.message);
+            })
+            .then(function () { _syncInFlight = false; });
+    }
+
+    // Coalesces bursts (e.g. several toggles, play + favourite) into one write
+    // and keeps at least BZ_SYNC_MIN_GAP_MS between writes.
+    function bzScheduleSync(delayMs, force) {
+        if (!_syncEnabled) return;
+        var wait = Math.max(delayMs, (_syncLastWriteAt + BZ_SYNC_MIN_GAP_MS) - Date.now());
+        var due = Date.now() + wait;
+        if (_syncTimer) {
+            _syncForce = _syncForce || !!force;
+            if (due >= _syncDue) return;   // an earlier flush is already queued
+            clearTimeout(_syncTimer);
+        } else {
+            _syncForce = !!force;
+        }
+        _syncDue = due;
+        _syncTimer = setTimeout(function () { bzFlushSync(_syncForce); }, wait);
+    }
+
+    function _bzSyncOnVisibility() {
+        if (document.visibilityState === 'hidden') bzScheduleSync(0, false); // flush before backgrounding
+    }
+    function _bzSyncOnPageHide() { bzScheduleSync(0, false); }
+
+    function bzStartSyncEngine() {
+        if (_syncEnabled) return;
+        _syncEnabled = true;
+        _syncLastSig = '';
+        _syncLastWriteAt = 0;
+        bzScheduleSync(2500, true); // first push once the app has settled; forced so "Last Synced" is fresh
+        _syncHeartbeat = setInterval(function () {
+            if (document.visibilityState === 'visible') bzScheduleSync(0, false);
+        }, BZ_SYNC_HEARTBEAT_MS);
+        document.addEventListener('visibilitychange', _bzSyncOnVisibility);
+        window.addEventListener('pagehide', _bzSyncOnPageHide);
+    }
+
+    function bzStopSyncEngine() {
+        _syncEnabled = false;
+        if (_syncTimer) { clearTimeout(_syncTimer); _syncTimer = null; }
+        if (_syncHeartbeat) { clearInterval(_syncHeartbeat); _syncHeartbeat = null; }
+        document.removeEventListener('visibilitychange', _bzSyncOnVisibility);
+        window.removeEventListener('pagehide', _bzSyncOnPageHide);
+        _syncLastSig = '';
+    }
+
+    // Hooks script.js already calls (as no-ops until now).
+    window.bzImmediateUpload = function () { bzScheduleSync(400, false); };   // settings toggles
+    window.bzSilentUpload = function () { bzScheduleSync(1500, false); };     // play / pause / favourites
+
     /* ── Central auth-state handler ─────────────────────────────────── */
     auth.onAuthStateChanged(function (user) {
         window.bzIsAuthenticated = !!user;
@@ -115,9 +462,14 @@
             try { localStorage.setItem('beatZen_session_uid', user.uid); } catch (_) { }
             html.classList.remove('bz-guest');
             html.classList.add('bz-signed-in');
-            ensureUserDoc(user);
+            var freshSignIn = _bzFreshSignIn;
+            _bzFreshSignIn = false;
+            // Sequenced AFTER ensureUserDoc so ensureUserDoc still sees a
+            // missing doc on first sign-up and writes createdAt.
+            ensureUserDoc(user).then(function () { return bzRecordDeviceLogin(user, freshSignIn); });
             grantFreeForeverPremiumIfEligible(user);
             startUserDocListener(user.uid);
+            bzStartSyncEngine();
 
             var gate = document.getElementById('bz-auth-gate');
             if (gate) gate.classList.remove('bz-gate-visible');
@@ -131,6 +483,7 @@
             html.classList.remove('bz-signed-in');
             html.classList.add('bz-guest');
             stopUserDocListener();
+            bzStopSyncEngine();
             window._bzIsPremium = false;
             try { localStorage.setItem('beatzen_premium', 'false'); } catch (_) { }
 
@@ -270,6 +623,7 @@
 
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Creating Account…'; }
 
+        _bzFreshSignIn = true;
         auth.createUserWithEmailAndPassword(email, pw).then(function (cred) {
             var user = cred.user;
             var expiresAt = Date.now() + SIGNUP_BONUS_HOURS * 3600000;
@@ -296,6 +650,7 @@
             if (typeof window.showToast === 'function') window.showToast('Welcome to Beat Zen! 24 hours of Premium unlocked.');
             if (typeof window.displayHome === 'function') window.displayHome();
         }).catch(function (err) {
+            _bzFreshSignIn = false;
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account'; }
             showErr(friendlyAuthError(err));
         });
@@ -317,9 +672,11 @@
 
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Signing In…'; }
 
+        _bzFreshSignIn = true;
         auth.signInWithEmailAndPassword(email, pw).then(function () {
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In'; }
         }).catch(function (err) {
+            _bzFreshSignIn = false;
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In'; }
             updateGateSigninSubmitState();
             showErr(friendlyAuthError(err));
